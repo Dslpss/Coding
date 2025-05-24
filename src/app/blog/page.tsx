@@ -1,54 +1,267 @@
-// Página do blog
+"use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { collection, getDocs, query } from "firebase/firestore";
+import { FaCalendar, FaUser, FaEye } from "react-icons/fa";
+import BlogMenu from "./components/BlogMenu";
 
 interface Post {
   id: string;
   title: string;
   content: string;
+  summary?: string;
+  imageUrl?: string;
+  videoUrl?: string;
+  tags?: string[];
+  authorName?: string;
+  published?: boolean;
   createdAt?: Date | null;
+  views?: number;
 }
 
 export default function BlogPage() {
   const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [stats, setStats] = useState({
+    totalPosts: 0,
+    totalViews: 0,
+    totalAuthors: 0,
+  });
+
+  const estimateReadTime = (content: string) => {
+    const wordsPerMinute = 200;
+    const words = content.trim().split(/\s+/).length;
+    const minutes = Math.ceil(words / wordsPerMinute);
+    return `${minutes} min de leitura`;
+  };
+
+  const formatDate = (date: Date | null | undefined) => {
+    if (!date) return "Data não disponível";
+    return new Intl.DateTimeFormat("pt-BR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }).format(date);
+  };
+
+  // Filtrar posts por tag
+  const filteredPosts = selectedTag
+    ? posts.filter((post) => post.tags?.includes(selectedTag))
+    : posts;
+
+  // Obter todas as tags únicas
+  const allTags = Array.from(new Set(posts.flatMap((post) => post.tags || [])));
+
+  // Função para calcular estatísticas
+  const calculateStats = (posts: Post[]) => {
+    const authors = new Set(posts.map((post) => post.authorName));
+    const totalViews = posts.reduce((sum, post) => sum + (post.views || 0), 0);
+
+    setStats({
+      totalPosts: posts.length,
+      totalViews: totalViews,
+      totalAuthors: authors.size,
+    });
+  };
+
   useEffect(() => {
     const fetchPosts = async () => {
-      const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
-      const snap = await getDocs(q);
-      setPosts(
-        snap.docs.map((doc) => {
+      try {
+        console.log("Iniciando busca dos posts...");
+        const q = query(collection(db, "blog"));
+
+        const snap = await getDocs(q);
+        console.log(`Encontrados ${snap.size} posts no total`);
+
+        if (snap.empty) {
+          console.log("Nenhum post encontrado na coleção");
+          setPosts([]);
+          setLoading(false);
+          return;
+        }
+
+        const fetchedPosts = snap.docs.map((doc) => {
           const data = doc.data();
+          console.log("Processando post:", { id: doc.id, title: data.title });
+
           return {
             id: doc.id,
-            title: data.title ?? "",
-            content: data.content ?? "",
-            createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : null,
+            title: data.title || "Sem título",
+            content: data.content || "",
+            summary: data.summary || "",
+            imageUrl: data.imageUrl || null,
+            videoUrl: data.videoUrl || null,
+            tags: data.tags || [],
+            authorName: data.authorName || "Admin",
+            published: true,
+            views: data.views || 0,
+            createdAt: data.createdAt?.toDate
+              ? data.createdAt.toDate()
+              : new Date(),
           };
-        })
-      );
+        });
+
+        console.log("Posts processados:", fetchedPosts.length);
+        setPosts(fetchedPosts);
+        calculateStats(fetchedPosts);
+      } catch (error) {
+        console.error("Erro ao buscar posts:", error);
+      } finally {
+        setLoading(false);
+      }
     };
+
     fetchPosts();
   }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-blue-950 via-blue-900 to-blue-950">
+        <div className="flex justify-center items-center min-h-[50vh]">
+          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold mb-4">Blog de Tutoriais</h1>
-      <Link href="/blog/novo" className="btn btn-primary">
-        Nova Postagem
-      </Link>
-      <div className="mt-6 grid gap-4">
-        {posts.map((post) => (
-          <div key={post.id} className="bg-white rounded shadow p-4">
-            <h2 className="font-bold text-lg mb-1">{post.title}</h2>
-            <div className="text-sm text-gray-700 line-clamp-3">
-              {post.content}
+    <div className="min-h-screen bg-gradient-to-b from-blue-950 via-blue-900 to-blue-950">
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        {/* Header com Estatísticas */}
+        <div className="mb-12 text-center">
+          <h1 className="text-4xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-300">
+            Blog SelfCoding
+          </h1>
+          <p className="text-blue-200 text-lg mb-8">
+            Dicas, tutoriais e novidades do mundo da programação
+          </p>
+          <div className="grid grid-cols-3 gap-4 max-w-3xl mx-auto">
+            <div className="bg-white/10 backdrop-blur-lg rounded-lg p-4">
+              <div className="text-3xl font-bold text-blue-400 mb-1">
+                {stats.totalPosts}
+              </div>
+              <div className="text-blue-200 text-sm">Posts Publicados</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-lg rounded-lg p-4">
+              <div className="text-3xl font-bold text-blue-400 mb-1">
+                {stats.totalViews}
+              </div>
+              <div className="text-blue-200 text-sm">Visualizações</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-lg rounded-lg p-4">
+              <div className="text-3xl font-bold text-blue-400 mb-1">
+                {stats.totalAuthors}
+              </div>
+              <div className="text-blue-200 text-sm">Autores</div>
             </div>
           </div>
-        ))}
-        {posts.length === 0 && (
-          <div className="text-gray-500">Nenhum post ainda.</div>
-        )}
+        </div>
+
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Menu Lateral */}
+          <div className="lg:w-1/4">
+            <div className="sticky top-8 space-y-6">
+              <BlogMenu />
+
+              {/* Filtro de Tags */}
+              {allTags.length > 0 && (
+                <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">
+                    Tags Populares
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {allTags.map((tag) => (
+                      <button
+                        key={tag}
+                        onClick={() =>
+                          setSelectedTag(selectedTag === tag ? null : tag)
+                        }
+                        className={`px-3 py-1 rounded-full text-sm transition-all duration-200 ${
+                          selectedTag === tag
+                            ? "bg-blue-500 text-white"
+                            : "bg-blue-500/20 text-blue-300 hover:bg-blue-500/30"
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Conteúdo Principal */}
+          <div className="lg:w-3/4 space-y-8">
+            {filteredPosts.length === 0 ? (
+              <div className="text-center text-blue-100 text-lg">
+                {selectedTag
+                  ? `Nenhuma postagem encontrada com a tag "${selectedTag}"`
+                  : "Nenhuma postagem encontrada."}
+              </div>
+            ) : (
+              <div className="grid gap-8 md:grid-cols-2">
+                {filteredPosts.map((post) => (
+                  <Link href={`/blog/${post.id}`} key={post.id}>
+                    <div className="group bg-white/10 backdrop-blur-lg rounded-2xl shadow-lg flex flex-col overflow-hidden border border-white/10 hover:shadow-[0_0_30px_rgba(59,130,246,0.2)] transition-all duration-300 h-full hover:-translate-y-1">
+                      {post.imageUrl && (
+                        <div className="relative overflow-hidden h-48">
+                          <img
+                            src={post.imageUrl}
+                            alt={post.title}
+                            className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-300"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        </div>
+                      )}
+                      <div className="p-6 flex-1 flex flex-col">
+                        <h2 className="text-xl font-bold text-white mb-3 group-hover:text-blue-400 transition-colors duration-200">
+                          {post.title}
+                        </h2>
+                        <p className="text-blue-100 text-sm mb-4 line-clamp-2 flex-1">
+                          {post.summary || post.content}
+                        </p>
+                        {post.tags && post.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mb-4">
+                            {post.tags.map((tag, index) => (
+                              <span
+                                key={index}
+                                className="px-2 py-1 text-xs rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/20"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between text-sm text-blue-200">
+                          <div className="flex items-center gap-4">
+                            <span className="flex items-center gap-1">
+                              <FaUser className="w-4 h-4" />
+                              {post.authorName}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <FaEye className="w-4 h-4" />
+                              {post.views || 0}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <FaCalendar className="w-4 h-4" />
+                            {formatDate(post.createdAt)}
+                          </div>
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-white/10 text-sm text-blue-300">
+                          {estimateReadTime(post.content)}
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

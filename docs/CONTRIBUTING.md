@@ -19,6 +19,7 @@ Use as [Issues do GitHub](https://github.com/Dslpss/Coding/issues) para reportar
 Uma descrição clara do que está acontecendo.
 
 **Passos para Reproduzir**
+
 1. Vá para '...'
 2. Clique em '....'
 3. Role para baixo até '....'
@@ -31,6 +32,7 @@ Uma descrição clara do que você esperava que acontecesse.
 Se aplicável, adicione screenshots para ajudar a explicar o problema.
 
 **Ambiente:**
+
 - OS: [ex. iOS, Windows]
 - Browser: [ex. chrome, safari]
 - Versão: [ex. 22]
@@ -55,6 +57,7 @@ Uma descrição de soluções ou features alternativas que você considerou.
 
 1. **Fork o repositório**
 2. **Crie uma branch** a partir da `main`:
+
    ```bash
    git checkout -b feature/minha-nova-feature
    ```
@@ -62,6 +65,7 @@ Uma descrição de soluções ou features alternativas que você considerou.
 3. **Faça suas alterações** seguindo os padrões do projeto
 
 4. **Teste suas mudanças**:
+
    ```bash
    npm run dev
    npm run build
@@ -69,11 +73,13 @@ Uma descrição de soluções ou features alternativas que você considerou.
    ```
 
 5. **Commit suas mudanças**:
+
    ```bash
    git commit -m "feat: adiciona nova funcionalidade X"
    ```
 
 6. **Push para sua branch**:
+
    ```bash
    git push origin feature/minha-nova-feature
    ```
@@ -83,6 +89,7 @@ Uma descrição de soluções ou features alternativas que você considerou.
 ## 🏗 Padrões de Código
 
 ### Commits
+
 Usamos [Conventional Commits](https://www.conventionalcommits.org/):
 
 - `feat`: nova funcionalidade
@@ -93,6 +100,7 @@ Usamos [Conventional Commits](https://www.conventionalcommits.org/):
 - `test`: adição ou correção de testes
 
 Exemplos:
+
 ```bash
 feat: adiciona sistema de comentários
 fix: corrige erro no login de usuário
@@ -100,17 +108,20 @@ docs: atualiza README com instruções de instalação
 ```
 
 ### TypeScript
+
 - Use tipos explícitos sempre que possível
 - Evite `any`, prefira tipos específicos
 - Use interfaces para objetos complexos
 
 ### React/Next.js
+
 - Use componentes funcionais com hooks
 - Prefira `"use client"` apenas quando necessário
 - Mantenha componentes pequenos e reutilizáveis
 - Use nomes descritivos para variáveis e funções
 
 ### Styling
+
 - Use classes do Tailwind CSS
 - Mantenha consistência com o design system
 - Prefira utilitários ao invés de CSS customizado

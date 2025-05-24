@@ -8,6 +8,7 @@ e este projeto segue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Não Lançado]
 
 ### Planejado
+
 - Sistema de certificados
 - Integração com sistema de pagamento
 - App mobile
@@ -19,6 +20,7 @@ e este projeto segue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.1.0] - 2025-05-24
 
 ### ✨ Adicionado
+
 - Sistema de autenticação com Firebase
 - Catálogo de cursos com visualização por categorias
 - Player de vídeo integrado
@@ -34,6 +36,7 @@ e este projeto segue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Documentação completa
 
 ### 🔧 Características Técnicas
+
 - Next.js 15 com App Router
 - React 19 + TypeScript
 - Firebase/Firestore como backend
@@ -43,6 +46,7 @@ e este projeto segue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Deploy otimizado para Vercel
 
 ### 🎨 Interface
+
 - Design moderno com tema azul
 - Navegação intuitiva
 - Componentes reutilizáveis
@@ -51,6 +55,7 @@ e este projeto segue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Modo escuro (tema azul escuro)
 
 ### 🔐 Segurança
+
 - Autenticação via Firebase Auth
 - Proteção de rotas
 - Validação de permissões
@@ -58,6 +63,7 @@ e este projeto segue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Headers de segurança
 
 ### 📱 Responsividade
+
 - Layout adaptável para mobile
 - Grid responsivo
 - Componentes mobile-first

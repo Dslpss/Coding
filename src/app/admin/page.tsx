@@ -255,7 +255,7 @@ export default function AdminPage() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold text-gray-800">Painel de Controle</h1>
+        <h1 className="text-2xl font-bold text-white">Painel de Controle</h1>
 
         {isAdmin && (
           <div className="flex items-center bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">

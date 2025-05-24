@@ -14,6 +14,7 @@ Este guia explica como fazer o deploy da plataforma Self Coding em diferentes am
 ### 1. Preparação
 
 1. **Faça commit de todas as alterações**:
+
 ```bash
 git add .
 git commit -m "feat: prepara projeto para deploy"
@@ -21,6 +22,7 @@ git push origin main
 ```
 
 2. **Verifique se o build funciona localmente**:
+
 ```bash
 npm run build
 npm run start
@@ -33,10 +35,12 @@ npm run start
 2. **Clique em "New Project"**
 
 3. **Importe o repositório do GitHub**
+
    - Selecione `Dslpss/Coding`
    - Configure as permissões se necessário
 
 4. **Configure as variáveis de ambiente**:
+
    ```
    NEXT_PUBLIC_FIREBASE_API_KEY=sua_api_key
    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=seu_auth_domain
@@ -48,6 +52,7 @@ npm run start
    ```
 
 5. **Configure o Build**:
+
    - Framework Preset: Next.js
    - Root Directory: `./` (padrão)
    - Build Command: `npm run build` (padrão)
@@ -85,40 +90,40 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
-    
+
     match /cursos/{cursoId}/comments/{document} {
       allow read: if true;
       allow create: if isAuthenticated() && validateComment();
       allow update, delete: if isOwner() || isAdmin();
     }
-    
+
     match /users/{userId} {
       allow read, write: if request.auth.uid == userId;
     }
-    
+
     match /admin/{document} {
       allow read, write: if isAdmin();
     }
-    
+
     match /blog/{document} {
       allow read: if resource.data.published == true;
       allow write: if isAdmin();
     }
-    
+
     function isAuthenticated() {
       return request.auth != null;
     }
-    
+
     function isOwner() {
       return request.auth.uid == resource.data.userId;
     }
-    
+
     function isAdmin() {
-      return request.auth != null && 
+      return request.auth != null &&
              exists(/databases/$(database)/documents/admin/config) &&
              get(/databases/$(database)/documents/admin/config).data.adminUsers[request.auth.uid] == true;
     }
-    
+
     function validateComment() {
       return request.resource.data.content is string &&
              request.resource.data.content.size() > 0 &&
@@ -138,12 +143,12 @@ service firebase.storage {
       allow read: if true;
       allow write: if request.auth != null && isAdmin();
     }
-    
+
     match /videos/{allPaths=**} {
       allow read: if request.auth != null;
       allow write: if isAdmin();
     }
-    
+
     function isAdmin() {
       return request.auth != null &&
              exists(/databases/(default)/documents/admin/config) &&
@@ -160,50 +165,50 @@ service firebase.storage {
 Crie/atualize `next.config.ts`:
 
 ```typescript
-import type { NextConfig } from 'next';
+import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Otimizações de imagem
   images: {
     domains: [
-      'firebasestorage.googleapis.com',
-      'lh3.googleusercontent.com', // Para fotos do Google
+      "firebasestorage.googleapis.com",
+      "lh3.googleusercontent.com", // Para fotos do Google
     ],
-    formats: ['image/webp', 'image/avif'],
+    formats: ["image/webp", "image/avif"],
   },
-  
+
   // Compressão
   compress: true,
-  
+
   // Headers de segurança
   async headers() {
     return [
       {
-        source: '/(.*)',
+        source: "/(.*)",
         headers: [
           {
-            key: 'X-Frame-Options',
-            value: 'DENY',
+            key: "X-Frame-Options",
+            value: "DENY",
           },
           {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
+            key: "X-Content-Type-Options",
+            value: "nosniff",
           },
           {
-            key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin',
+            key: "Referrer-Policy",
+            value: "origin-when-cross-origin",
           },
         ],
       },
     ];
   },
-  
+
   // Redirecionamentos
   async redirects() {
     return [
       {
-        source: '/',
-        destination: '/auth',
+        source: "/",
+        destination: "/auth",
         permanent: false,
       },
     ];
@@ -231,8 +236,8 @@ Adicione ao `package.json`:
 E configure no `next.config.ts`:
 
 ```typescript
-const withBundleAnalyzer = require('@next/bundle-analyzer')({
-  enabled: process.env.ANALYZE === 'true',
+const withBundleAnalyzer = require("@next/bundle-analyzer")({
+  enabled: process.env.ANALYZE === "true",
 });
 
 export default withBundleAnalyzer(nextConfig);
@@ -251,10 +256,10 @@ export default withBundleAnalyzer(nextConfig);
 No `lib/firebase.ts`:
 
 ```typescript
-import { getAnalytics, isSupported } from 'firebase/analytics';
+import { getAnalytics, isSupported } from "firebase/analytics";
 
 // Só inicializa analytics no client-side e se suportado
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   isSupported().then((supported) => {
     if (supported) {
       export const analytics = getAnalytics(app);
@@ -272,7 +277,7 @@ npm install @sentry/nextjs
 Configure em `sentry.client.config.ts`:
 
 ```typescript
-import * as Sentry from '@sentry/nextjs';
+import * as Sentry from "@sentry/nextjs";
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -313,30 +318,30 @@ Crie `.github/workflows/deploy.yml`:
 name: Deploy to Vercel
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '18'
-          
+          node-version: "18"
+
       - name: Install dependencies
         run: npm ci
-        
+
       - name: Run tests
         run: npm run lint
-        
+
       - name: Build
         run: npm run build
-        
+
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v20
         with:

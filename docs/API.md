@@ -9,6 +9,7 @@ Esta documentação descreve as principais funcionalidades e estruturas de dados
 ### Coleções Principais
 
 #### `cursos`
+
 Armazena informações dos cursos disponíveis na plataforma.
 
 ```typescript
@@ -27,6 +28,7 @@ interface Curso {
 ```
 
 #### `cursos/{cursoId}/chapters`
+
 Subcoleção que contém os capítulos de cada curso.
 
 ```typescript
@@ -42,6 +44,7 @@ interface Capitulo {
 ```
 
 #### `cursos/{cursoId}/chapters/{capituloId}/videos`
+
 Subcoleção que contém os vídeos de cada capítulo.
 
 ```typescript
@@ -56,6 +59,7 @@ interface Video {
 ```
 
 #### `cursos/{cursoId}/comments`
+
 Sistema de comentários para cada curso.
 
 ```typescript
@@ -71,6 +75,7 @@ interface Comment {
 ```
 
 #### `users`
+
 Informações dos usuários cadastrados.
 
 ```typescript
@@ -88,12 +93,13 @@ interface User {
       currentVideo?: string;
       progress: number; // 0-100
       lastAccessed: Date;
-    }
+    };
   };
 }
 ```
 
 #### `blog`
+
 Posts do blog da plataforma.
 
 ```typescript
@@ -112,6 +118,7 @@ interface BlogPost {
 ```
 
 #### `admin`
+
 Configurações e dados administrativos.
 
 ```typescript
@@ -138,19 +145,19 @@ A plataforma usa Firebase Authentication para gerenciar usuários:
 // Hook personalizado para autenticação
 const useAuth = () => {
   const [user, loading, error] = useAuthState(auth);
-  
+
   const login = async (email: string, password: string) => {
     return signInWithEmailAndPassword(auth, email, password);
   };
-  
+
   const register = async (email: string, password: string) => {
     return createUserWithEmailAndPassword(auth, email, password);
   };
-  
+
   const logout = async () => {
     return signOut(auth);
   };
-  
+
   return { user, loading, error, login, register, logout };
 };
 ```
@@ -158,27 +165,33 @@ const useAuth = () => {
 ### Proteção de Rotas
 
 #### Rotas de Usuário
+
 Protegidas por middleware que verifica se o usuário está autenticado:
 
 ```typescript
 // app/dashboard/layout.tsx
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [user, loading] = useAuthState(auth);
-  
+
   if (loading) return <LoadingSpinner />;
-  if (!user) redirect('/auth');
-  
+  if (!user) redirect("/auth");
+
   return <div>{children}</div>;
 }
 ```
 
 #### Rotas de Admin
+
 Verificação adicional para permissões de administrador:
 
 ```typescript
 // utils/authGuard.ts
 export const requireAdmin = async (userId: string): Promise<boolean> => {
-  const adminDoc = await getDoc(doc(db, 'admin', 'config'));
+  const adminDoc = await getDoc(doc(db, "admin", "config"));
   const adminData = adminDoc.data();
   return adminData?.adminUsers?.includes(userId) || false;
 };
@@ -196,11 +209,11 @@ interface VideoPlayerProps {
   startTime?: number;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ 
-  url, 
-  onProgress, 
+const VideoPlayer: React.FC<VideoPlayerProps> = ({
+  url,
+  onProgress,
   onEnded,
-  startTime = 0 
+  startTime = 0,
 }) => {
   // Implementação usando react-player
   return (
@@ -220,18 +233,23 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
 ```typescript
 // Salvar progresso do usuário
-const saveProgress = async (userId: string, cursoId: string, videoId: string, progress: number) => {
-  const userRef = doc(db, 'users', userId);
+const saveProgress = async (
+  userId: string,
+  cursoId: string,
+  videoId: string,
+  progress: number
+) => {
+  const userRef = doc(db, "users", userId);
   const updateData = {
     [`progress.${cursoId}.currentVideo`]: videoId,
     [`progress.${cursoId}.progress`]: progress,
     [`progress.${cursoId}.lastAccessed`]: new Date(),
   };
-  
+
   if (progress >= 90) {
     updateData[`progress.${cursoId}.completedVideos`] = arrayUnion(videoId);
   }
-  
+
   await updateDoc(userRef, updateData);
 };
 ```
@@ -247,22 +265,22 @@ interface CommentsProps {
 
 const Comments: React.FC<CommentsProps> = ({ cursoId }) => {
   const [comments, setComments] = useState<Comment[]>([]);
-  const [newComment, setNewComment] = useState('');
-  
+  const [newComment, setNewComment] = useState("");
+
   const addComment = async (content: string) => {
     const user = auth.currentUser;
     if (!user) return;
-    
+
     const commentData = {
       userId: user.uid,
       userName: user.displayName || user.email,
       content,
       createdAt: new Date(),
     };
-    
-    await addDoc(collection(db, 'cursos', cursoId, 'comments'), commentData);
+
+    await addDoc(collection(db, "cursos", cursoId, "comments"), commentData);
   };
-  
+
   // Resto da implementação...
 };
 ```
@@ -280,14 +298,15 @@ interface UserStats {
 }
 
 const getUserStats = async (userId: string): Promise<UserStats> => {
-  const userDoc = await getDoc(doc(db, 'users', userId));
+  const userDoc = await getDoc(doc(db, "users", userId));
   const userData = userDoc.data();
-  
+
   // Calcular estatísticas baseadas no progresso
   return {
     totalCourses: userData?.enrolledCourses?.length || 0,
-    completedCourses: Object.values(userData?.progress || {})
-      .filter((p: any) => p.progress === 100).length,
+    completedCourses: Object.values(userData?.progress || {}).filter(
+      (p: any) => p.progress === 100
+    ).length,
     totalHours: calculateTotalHours(userData?.progress || {}),
     currentStreak: calculateStreak(userData?.progress || {}),
   };
@@ -300,9 +319,9 @@ const getUserStats = async (userId: string): Promise<UserStats> => {
 
 ```typescript
 // lib/firebase.ts
-import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -321,7 +340,7 @@ export const auth = getAuth(app);
 ```typescript
 // utils/helpers.ts
 export const formatDate = (date: Date): string => {
-  return new Intl.DateTimeFormat('pt-BR').format(date);
+  return new Intl.DateTimeFormat("pt-BR").format(date);
 };
 
 export const formatDuration = (seconds: number): string => {
@@ -333,10 +352,10 @@ export const formatDuration = (seconds: number): string => {
 export const slugify = (text: string): string => {
   return text
     .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 };
 ```
 
@@ -375,35 +394,35 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
-    
+
     // Comentários
     match /cursos/{cursoId}/comments/{document} {
       allow read: if true;
       allow create: if isAuthenticated();
       allow update, delete: if isOwner() || isAdmin();
     }
-    
+
     // Usuários podem ler/escrever seus próprios dados
     match /users/{userId} {
       allow read, write: if request.auth.uid == userId;
     }
-    
+
     // Apenas admins podem acessar dados administrativos
     match /admin/{document} {
       allow read, write: if isAdmin();
     }
-    
+
     // Funções auxiliares
     function isAuthenticated() {
       return request.auth != null;
     }
-    
+
     function isOwner() {
       return request.auth.uid == resource.data.userId;
     }
-    
+
     function isAdmin() {
-      return request.auth != null && 
+      return request.auth != null &&
              exists(/databases/$(database)/documents/admin/config) &&
              get(/databases/$(database)/documents/admin/config).data.adminUsers[request.auth.uid] == true;
     }
@@ -424,20 +443,20 @@ export class AppError extends Error {
     public statusCode: number = 500
   ) {
     super(message);
-    this.name = 'AppError';
+    this.name = "AppError";
   }
 }
 
 export const handleFirebaseError = (error: any): AppError => {
   switch (error.code) {
-    case 'auth/user-not-found':
-      return new AppError('Usuário não encontrado', 'USER_NOT_FOUND', 404);
-    case 'auth/wrong-password':
-      return new AppError('Senha incorreta', 'WRONG_PASSWORD', 401);
-    case 'permission-denied':
-      return new AppError('Acesso negado', 'ACCESS_DENIED', 403);
+    case "auth/user-not-found":
+      return new AppError("Usuário não encontrado", "USER_NOT_FOUND", 404);
+    case "auth/wrong-password":
+      return new AppError("Senha incorreta", "WRONG_PASSWORD", 401);
+    case "permission-denied":
+      return new AppError("Acesso negado", "ACCESS_DENIED", 403);
     default:
-      return new AppError('Erro interno do servidor', 'INTERNAL_ERROR', 500);
+      return new AppError("Erro interno do servidor", "INTERNAL_ERROR", 500);
   }
 };
 ```

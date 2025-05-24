@@ -81,7 +81,7 @@ export default function AdminLayout({
   };
 
   return (
-    <div className="min-h-screen w-full bg-gray-100 flex flex-col">
+    <div className="min-h-screen w-full bg-gradient-to-b from-blue-950 via-blue-900 to-blue-950 flex flex-col">
       <AdminHeader
         userEmail={user?.email}
         toggleSidebar={toggleSidebar}

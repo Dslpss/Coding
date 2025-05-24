@@ -16,6 +16,7 @@ Uma plataforma moderna de ensino de programação construída com Next.js, React
 ## ✨ Funcionalidades
 
 ### 👥 Para Usuários
+
 - **Autenticação**: Login e registro seguro
 - **Catálogo de Cursos**: Navegação por categorias
 - **Player de Vídeo**: Reprodução de aulas com qualidade
@@ -24,6 +25,7 @@ Uma plataforma moderna de ensino de programação construída com Next.js, React
 - **Dashboard**: Painel personalizado do usuário
 
 ### 🔧 Para Administradores
+
 - **Painel Admin**: Interface completa de administração
 - **Gestão de Cursos**: Criar, editar e gerenciar cursos
 - **Gestão de Usuários**: Controle de usuários da plataforma
@@ -53,7 +55,8 @@ src/
 ## 🛠 Configuração do Ambiente
 
 ### Pré-requisitos
-- Node.js 18+ 
+
+- Node.js 18+
 - npm, yarn ou pnpm
 - Conta no Firebase
 
@@ -78,12 +81,14 @@ FIREBASE_ADMIN_CLIENT_EMAIL=seu_client_email
 ### Instalação
 
 1. **Clone o repositório**
+
 ```bash
 git clone https://github.com/Dslpss/Coding.git
 cd Coding
 ```
 
 2. **Instale as dependências**
+
 ```bash
 npm install
 # ou
@@ -93,11 +98,13 @@ pnpm install
 ```
 
 3. **Configure o Firebase**
+
    - Crie um projeto no [Firebase Console](https://console.firebase.google.com/)
    - Ative Authentication e Firestore
    - Configure as variáveis de ambiente
 
 4. **Execute o projeto**
+
 ```bash
 npm run dev
 # ou
@@ -125,6 +132,7 @@ pnpm dev
 ## 🎨 Customização
 
 ### Cores e Tema
+
 O projeto usa um sistema de cores azul como padrão. Para personalizar:
 
 ```css
@@ -136,6 +144,7 @@ O projeto usa um sistema de cores azul como padrão. Para personalizar:
 ```
 
 ### Componentes Reutilizáveis
+
 - `VideoPlayer`: Player customizado para vídeos
 - `Comments`: Sistema de comentários
 - `AdminHeader/Sidebar`: Layout do painel admin

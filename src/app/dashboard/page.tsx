@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import MeusCursos from "./MeusCursos";
 import NavigationMenu from "./NavigationMenu";
 import UserStats from "./UserStats";
+import BlogPostsDashboard from "./BlogPostsDashboard";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -98,6 +99,10 @@ export default function Dashboard() {
 
           <div className="mb-6">
             <MeusCursos />
+          </div>
+
+          <div className="mb-6">
+            <BlogPostsDashboard />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
