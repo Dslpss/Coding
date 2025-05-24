@@ -1,0 +1,307 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { auth, db } from "@/lib/firebase";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  limit,
+  orderBy,
+  where,
+  DocumentData,
+  QueryDocumentSnapshot,
+  Timestamp,
+  updateDoc,
+  deleteDoc,
+} from "firebase/firestore";
+import { FaUser, FaSearch, FaTimes } from "react-icons/fa";
+import Image from "next/image";
+import AlertBanner from "../components/AlertBanner";
+import { checkAdminStatus } from "../utils/adminUtils";
+
+interface User {
+  id: string;
+  displayName: string;
+  email: string;
+  photoURL?: string;
+  createdAt?: Timestamp;
+  lastLogin?: Timestamp;
+  isAdmin?: boolean;
+  matriculas?: number;
+  status?: "active" | "inactive" | "banned";
+}
+
+export default function AdminUsuarios() {
+  const [user] = useAuthState(auth);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Inicialização
+  useEffect(() => {
+    let mounted = true;
+
+    const initialize = async () => {
+      if (!user) return;
+
+      try {
+        console.log("Verificando status de admin...");
+        const adminStatus = await checkAdminStatus(user.email || "");
+        console.log("Status de admin:", adminStatus);
+        
+        if (!mounted) return;
+        
+        setIsAdmin(adminStatus);
+        if (adminStatus) {
+          console.log("Usuário é admin, buscando usuários...");
+          fetchUsers();
+        } else {
+          setLoading(false);
+          setError("Você não tem permissões de administrador para visualizar usuários");
+        }
+      } catch (err) {
+        console.error("Erro na inicialização:", err);
+        if (mounted) {
+          setError("Erro ao verificar permissões de administrador");
+          setLoading(false);
+        }
+      }
+    };
+
+    initialize();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
+
+  // Buscar usuários
+  const fetchUsers = async () => {
+    if (!isAdmin) {
+      console.log("Usuário não é admin!");
+      return;
+    }
+
+    console.log("Buscando usuários...");
+    setLoading(true);
+
+    try {
+      const usersQuery = query(
+        collection(db, "users"),
+        orderBy("email"),
+        limit(10)
+      );
+
+      console.log("Executando query...");
+      const usersSnapshot = await getDocs(usersQuery);
+      console.log("Documentos encontrados:", usersSnapshot.size);
+
+      const usersList = usersSnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          displayName: data.displayName || "Usuário sem nome",
+          email: data.email || "Sem e-mail",
+          photoURL: data.photoURL,
+          createdAt: data.createdAt,
+          lastLogin: data.lastLogin,
+          status: data.status || "active",
+          matriculas: data.matriculas || 0,
+        };
+      });
+
+      console.log("Usuários processados:", usersList);
+      setUsers(usersList);
+    } catch (err: any) {
+      console.error("Erro ao buscar usuários:", err);
+      setError("Erro ao carregar usuários: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Atualizar status de um usuário
+  const updateUserStatus = async (userId: string, status: "active" | "inactive" | "banned") => {
+    if (!isAdmin) return;
+
+    try {
+      await updateDoc(doc(db, "users", userId), {
+        status: status,
+        updatedAt: new Date(),
+      });
+
+      setUsers(users.map((u) => 
+        u.id === userId ? { ...u, status: status } : u
+      ));
+
+      return true;
+    } catch (err) {
+      console.error("Erro ao atualizar status do usuário:", err);
+      return false;
+    }
+  };
+
+  // Excluir usuário
+  const handleDelete = async (userId: string, userName: string) => {
+    if (!confirm(`Tem certeza que deseja excluir o usuário ${userName}?`)) {
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, "users", userId));
+      setUsers(users.filter(u => u.id !== userId));
+      setError(null);
+    } catch (err: any) {
+      console.error("Erro ao excluir usuário:", err);
+      setError(`Erro ao excluir usuário: ${err.message}`);
+    }
+  };
+
+  // Interface do usuário
+  if (!user) {
+    return (
+      <div className="p-8">
+        <AlertBanner
+          type="warning"
+          message="Você precisa estar logado como administrador para acessar esta página."
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full max-w-7xl mx-auto px-4">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">
+          Gerenciamento de Usuários
+        </h1>
+      </div>
+
+      {!isAdmin && (
+        <AlertBanner
+          type="error"
+          message="Você não tem permissões de administrador para gerenciar usuários."
+        />
+      )}
+
+      {error && (
+        <AlertBanner
+          type="error"
+          message={error}
+          onClose={() => setError(null)}
+        />
+      )}
+
+      {isAdmin && (
+        <div className="bg-white rounded-lg shadow-md">
+          {loading ? (
+            <div className="flex justify-center items-center p-8">
+              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="bg-gray-50 border-b">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Usuário
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Email
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Ações
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {users.map((user) => (
+                    <tr key={user.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-10 w-10">
+                            {user.photoURL ? (
+                              <Image
+                                width={40}
+                                height={40}
+                                className="h-10 w-10 rounded-full object-cover"
+                                src={user.photoURL}
+                                alt={`Foto de ${user.displayName || "usuário"}`}
+                              />
+                            ) : (
+                              <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                <FaUser className="text-gray-500" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">
+                              {user.displayName || "Sem nome"}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {user.email}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                            ${user.status === "active"
+                              ? "bg-green-100 text-green-800"
+                              : user.status === "inactive"
+                              ? "bg-gray-100 text-gray-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {user.status === "active"
+                            ? "Ativo"
+                            : user.status === "inactive"
+                            ? "Inativo"
+                            : "Bloqueado"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button
+                          onClick={() => updateUserStatus(user.id, user.status === "active" ? "inactive" : "active")}
+                          className={`text-sm mr-3 ${
+                            user.status === "active"
+                              ? "text-red-600 hover:text-red-900"
+                              : "text-green-600 hover:text-green-900"
+                          }`}
+                        >
+                          {user.status === "active" ? "Desativar" : "Ativar"}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(user.id, user.displayName)}
+                          className="text-red-600 hover:text-red-900 text-sm"
+                        >
+                          Excluir
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {users.length === 0 && !loading && (
+                <div className="text-center py-4 text-gray-500">
+                  Nenhum usuário encontrado
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,55 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Função auxiliar para verificar se o usuário é admin
+    function isAdmin() {
+      let adminId = request.auth.token.email.replace('.', '_').replace('@', '_');
+      return request.auth != null && 
+             exists(/databases/$(database)/documents/admins/$(adminId));
+    }
+
+    // Permite leitura da coleção admins para usuários autenticados
+    match /admins/{adminId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Protege escrita em cursos
+    match /cursos/{docId} {
+      allow read: if true; // leitura pública
+      allow write: if request.auth != null; // Temporariamente para debug
+    }
+
+    // Protege escrita em blog
+    match /blog/{docId} {
+      allow read: if true; // leitura pública
+      allow write: if request.auth != null; // Temporariamente para debug
+    }    // Regras para a coleção de usuários
+    match /users/{userId} {
+      allow read: if isAdmin() || request.auth.uid == userId;  // Admin pode ler qualquer usuário, usuário pode ler próprio perfil
+      allow list: if isAdmin();  // Apenas admin pode listar todos os usuários
+      allow write: if isAdmin() || request.auth.uid == userId;  // Admin pode modificar qualquer usuário, usuário pode modificar próprio perfil
+    }
+
+    // Regras para a coleção de matrículas
+    match /matriculas/{matriculaId} {
+      allow read: if request.auth != null && 
+                  request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && 
+                   request.auth.uid == request.resource.data.userId;
+      allow update, delete: if request.auth != null; // Temporariamente para debug
+    }
+
+    // Regras para a coleção adminLogins
+    match /adminLogins/{loginId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Regra padrão - temporariamente mais permissiva para debug
+    match /{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+  }
+}
