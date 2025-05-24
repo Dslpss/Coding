@@ -1,8 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useAuthState } from "react-firebase-hooks/auth";
-import { db, auth } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import {
   doc,
   getDoc,
@@ -62,7 +61,6 @@ export default function CursoPersonalizarPage({
   params: { id: string } | Promise<{ id: string }>;
 }) {
   const [cursoId, setCursoId] = useState<string | null>(null);
-  const [user] = useAuthState(auth);
   const [curso, setCurso] = useState<Curso | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -97,9 +95,8 @@ export default function CursoPersonalizarPage({
       ignore = true;
     };
   }, [params]);
-
   useEffect(() => {
-    if (!user || !cursoId) return;
+    if (!cursoId) return;
     const fetchCurso = async () => {
       setLoading(true);
       try {
@@ -116,7 +113,7 @@ export default function CursoPersonalizarPage({
       setLoading(false);
     };
     fetchCurso();
-  }, [user, cursoId]);
+  }, [cursoId]);
 
   // Buscar capítulos
   useEffect(() => {
@@ -311,9 +308,7 @@ export default function CursoPersonalizarPage({
     }
     setCapLoading(false);
   }
-
-  if (!user)
-    return <AlertBanner type="warning" message="Faça login para acessar." />;
+  // Admin authentication is handled by the layout, no need for additional checks here
   if (loading || !cursoId) return <div className="p-8">Carregando...</div>;
   if (error) return <AlertBanner type="error" message={error} />;
   if (!curso) return null;

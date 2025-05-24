@@ -1,17 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuthState } from "react-firebase-hooks/auth";
-import { auth, db } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import Link from "next/link";
-import {
-  collection,
-  getDocs,
-  query,
-  where,
-  limit,
-  orderBy,
-} from "firebase/firestore";
+import { collection, getDocs, query, limit, orderBy } from "firebase/firestore";
 import AdminStats from "./AdminStats";
 import {
   FaBookOpen,
@@ -20,19 +12,17 @@ import {
   FaChartBar,
   FaExclamationTriangle,
 } from "react-icons/fa";
-import AlertBanner from "./components/AlertBanner";
-import { checkAdminStatus, formatTimestamp } from "./utils/adminUtils";
+import { getAdminSession } from "./utils/adminAuth";
 
 interface RecentActivity {
   id: string;
   type: string;
   title: string;
-  date: any;
+  date: Date | { seconds: number; nanoseconds: number };
   user?: string;
 }
 
 export default function AdminPage() {
-  const [user] = useAuthState(auth);
   const [stats, setStats] = useState({
     totalAlunos: 0,
     totalCursos: 0,
@@ -42,19 +32,22 @@ export default function AdminPage() {
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
-
     const fetchData = async () => {
       try {
+        // Obter dados da sessão admin
+        const session = getAdminSession();
+        if (!session) {
+          setError("Sessão administrativa não encontrada");
+          setLoading(false);
+          return;
+        }
+
         console.log("Iniciando busca de dados administrativos...");
 
-        // Primeiro verificar se o usuário é admin
-        const adminStatus = await checkAdminStatus(user.email || "");
-        setIsAdmin(adminStatus);
-        console.log(`Usuário ${user.email} é admin: ${adminStatus}`);
+        // Buscar estatísticas e atividades recentes
+        console.log(`Admin ${session.email} acessando painel`);
 
         // Inicializa contadores
         let cursosCount = 0;
@@ -106,79 +99,72 @@ export default function AdminPage() {
           }
         } catch (err) {
           console.log("Erro ao buscar blog:", err);
-        } // Correção: Precisamos verificar se o usuário é admin antes de tentar acessar "users"        // Buscar usuários apenas se o usuário for admin
-        if (adminStatus) {
-          try {
-            const usuariosSnapshot = await getDocs(collection(db, "users"));
-            alunosCount = usuariosSnapshot.size;
-            console.log("Total de alunos encontrados:", alunosCount);
+        }
 
-            // Se for admin, também adicionar atividades recentes de usuários
-            if (usuariosSnapshot.size > 0) {
-              // Obter os 5 usuários mais recentes para mostrar na atividade
-              const recentUsersQuery = query(
-                collection(db, "users"),
-                orderBy("createdAt", "desc"),
-                limit(5)
-              );
-
-              const recentUsersSnapshot = await getDocs(recentUsersQuery);
-              const userActivities = recentUsersSnapshot.docs.map((doc) => {
-                const data = doc.data();
-                return {
-                  id: doc.id,
-                  type: "usuario",
-                  title: `Novo usuário: ${
-                    data.displayName || data.email || "Sem nome"
-                  }`,
-                  date: data.createdAt || new Date(),
-                  user: doc.id,
-                };
-              });
-
-              recentActivitiesList = [
-                ...recentActivitiesList,
-                ...userActivities,
-              ];
-            }
-          } catch (err: any) {
-            console.log("Erro ao buscar usuários:", err);
-            // Não é um erro crítico, apenas não mostramos este dado
-          }
-        } else {
-          console.log("Usuário não é admin, pulando busca de usuários");
-        } // Buscar matrículas se o usuário for admin
-        if (adminStatus) {
-          try {
-            const matriculasQuery = query(
-              collection(db, "matriculas"),
+        // Buscar usuários
+        try {
+          const usuariosSnapshot = await getDocs(collection(db, "users"));
+          alunosCount = usuariosSnapshot.size;
+          console.log("Total de alunos encontrados:", alunosCount); // Adicionar atividades recentes de usuários
+          if (usuariosSnapshot.size > 0) {
+            // Obter os 5 usuários mais recentes para mostrar na atividade
+            const recentUsersQuery = query(
+              collection(db, "users"),
               orderBy("createdAt", "desc"),
               limit(5)
             );
 
-            const matriculasSnapshot = await getDocs(matriculasQuery);
-            console.log(`Matrículas encontradas: ${matriculasSnapshot.size}`);
-
-            const matriculasActivities = matriculasSnapshot.docs.map((doc) => {
+            const recentUsersSnapshot = await getDocs(recentUsersQuery);
+            const userActivities = recentUsersSnapshot.docs.map((doc) => {
               const data = doc.data();
               return {
                 id: doc.id,
-                type: "matricula",
-                title: `Nova matrícula: ${
-                  data.cursoNome || "Curso não especificado"
+                type: "usuario",
+                title: `Novo usuário: ${
+                  data.displayName || data.email || "Sem nome"
                 }`,
                 date: data.createdAt || new Date(),
-                user: data.userId,
+                user: doc.id,
               };
             });
 
-            recentActivitiesList = [
-              ...recentActivitiesList,
-              ...matriculasActivities,
-            ];
-          } catch (err) {
-            console.log("Erro ao buscar matrículas:", err);
+            recentActivitiesList = [...recentActivitiesList, ...userActivities];
           }
+        } catch (err) {
+          console.log("Erro ao buscar usuários:", err);
+          // Não é um erro crítico, apenas não mostramos este dado
+        }
+
+        // Buscar matrículas
+        try {
+          const matriculasQuery = query(
+            collection(db, "matriculas"),
+            orderBy("createdAt", "desc"),
+            limit(5)
+          );
+
+          const matriculasSnapshot = await getDocs(matriculasQuery);
+          console.log(`Matrículas encontradas: ${matriculasSnapshot.size}`);
+
+          const matriculasActivities = matriculasSnapshot.docs.map((doc) => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              type: "matricula",
+              title: `Nova matrícula: ${
+                data.cursoNome || "Curso não especificado"
+              }`,
+              date: data.createdAt || new Date(),
+              user: data.userId,
+            };
+          });
+
+          recentActivitiesList = [
+            ...recentActivitiesList,
+            ...matriculasActivities,
+          ];
+        } catch (err) {
+          console.log("Erro ao buscar matrículas:", err);
         }
 
         // Definir estatísticas com os dados disponíveis
@@ -187,8 +173,10 @@ export default function AdminPage() {
           totalCursos: cursosCount,
           totalPosts: postsCount,
           crescimentoMensal: 12.5, // Valor de exemplo
-        }); // Organizar atividades recentes por data (mais recentes primeiro)
-        recentActivitiesList.sort((a, b) => {
+        });
+
+        // Organizar atividades recentes por data (mais recentes primeiro)
+        recentActivitiesList.sort((a: RecentActivity, b: RecentActivity) => {
           // Converte datas se necessário
           const dateA =
             a.date instanceof Date
@@ -207,8 +195,6 @@ export default function AdminPage() {
           // Ordena do mais recente para o mais antigo
           return dateB.getTime() - dateA.getTime();
         });
-
-        // Manter apenas os 10 itens mais recentes
         setRecentActivity(recentActivitiesList.slice(0, 10));
 
         // Mostrar um log de sucesso
@@ -219,9 +205,11 @@ export default function AdminPage() {
         // Remover qualquer erro anterior
         setError(null);
         setLoading(false);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Erro ao buscar dados:", error);
-        setError(error.message || "Erro ao carregar dados");
+        const errorMessage =
+          error instanceof Error ? error.message : "Erro ao carregar dados";
+        setError(errorMessage);
         // Mostrar dados fictícios para evitar quebra da interface
         setStats({
           totalAlunos: 0,
@@ -235,43 +223,18 @@ export default function AdminPage() {
     };
 
     fetchData();
-  }, [user]);
+  }, []);
 
-  if (!user) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 bg-white rounded-lg shadow-md">
-        <p className="text-gray-700 mb-4">
-          Você precisa estar logado para acessar esta área.
-        </p>
-        <Link
-          href="/auth"
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-        >
-          Login
-        </Link>
-      </div>
-    );
-  }
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
+        {" "}
         <h1 className="text-2xl font-bold text-white">Painel de Controle</h1>
-
-        {isAdmin && (
-          <div className="flex items-center bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
-            <span className="h-2 w-2 bg-green-500 rounded-full mr-2"></span>
-            Acesso completo
-          </div>
-        )}
-      </div>{" "}
-      {/* Aviso de Permissões - mostrado somente se o usuário não for admin */}
-      {!isAdmin && (
-        <AlertBanner
-          type="warning"
-          title="Acesso limitado"
-          message="Você não tem permissões de administrador completas. Algumas informações podem não estar disponíveis. Entre em contato com um administrador se precisar de acesso completo."
-        />
-      )}
+        <div className="flex items-center bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+          <span className="h-2 w-2 bg-green-500 rounded-full mr-2"></span>
+          Acesso completo
+        </div>
+      </div>
       {/* Stats Cards */}
       <AdminStats
         totalAlunos={stats.totalAlunos}

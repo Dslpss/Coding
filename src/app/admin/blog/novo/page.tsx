@@ -1,36 +1,27 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useAuthState } from "react-firebase-hooks/auth";
-import { auth } from "@/lib/firebase";
-import { checkAdminStatus } from "../../utils/adminUtils";
+import { isAdminAuthenticated, getAdminSession } from "../../utils/adminAuth";
 import BlogEditor from "../components/BlogEditor";
 import { useRouter } from "next/navigation";
 import { FaArrowLeft } from "react-icons/fa";
 
 export default function AdminNovoPost() {
-  const [user] = useAuthState(auth);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    const verifyAdmin = async () => {
-      if (user?.email) {
-        const adminStatus = await checkAdminStatus(user.email);
-        setIsAdmin(adminStatus);
-        if (!adminStatus) {
-          router.push("/admin");
-        }
-      } else {
-        router.push("/admin/login");
+    const verifyAdmin = () => {
+      // Verifica se admin está autenticado
+      if (!isAdminAuthenticated()) {
+        router.push("/admin-login");
+        return;
       }
+
       setLoading(false);
     };
 
-    if (user !== undefined) {
-      verifyAdmin();
-    }
-  }, [user, router]);
+    verifyAdmin();
+  }, [router]);
 
   const handleSave = () => {
     router.push("/admin/blog");
@@ -40,15 +31,6 @@ export default function AdminNovoPost() {
     return (
       <div className="flex justify-center items-center min-h-[50vh]">
         <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="p-8 text-red-600 bg-red-50 rounded-lg border border-red-200">
-        <div className="font-semibold">Acesso Negado</div>
-        <div>Você não tem permissões de administrador.</div>
       </div>
     );
   }

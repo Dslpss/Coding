@@ -1,86 +1,176 @@
 "use client";
 import { useState } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
-import { checkAdminStatus } from "../admin/utils/authGuard";
+import { FaUser, FaLock, FaEye, FaEyeSlash, FaShieldAlt } from "react-icons/fa";
+
+// Importação dinâmica da função para evitar erros SSR
+const loginAdminFunction = async (email: string, password: string) => {
+  const { loginAdmin } = await import("@/app/admin/utils/adminAuth");
+  return loginAdmin(email, password);
+};
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setLoading(true);
 
-    try {
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-
-      if (!userCredential.user.email) {
-        throw new Error("Email não encontrado");
-      }
-
-      const isAdmin = await checkAdminStatus(userCredential.user.email);
-
-      if (isAdmin) {
-        localStorage.setItem("adminStatus", "true");
-        router.push("/admin");
-      } else {
-        setError("Você não tem permissões de administrador");
-        await auth.signOut();
-      }
-    } catch (err) {
-      console.error("Erro no login:", err);
-      setError(
-        "Erro ao fazer login: " +
-          (err instanceof Error ? err.message : "Erro desconhecido")
-      );
-      localStorage.removeItem("adminStatus");
+    if (!email || !password) {
+      setError("Por favor, preencha todos os campos.");
+      return;
     }
 
-    setLoading(false);
+    setLoading(true);
+    setError("");
+
+    try {
+      await loginAdmin(email, password);
+
+      // Redirecionar para o painel admin
+      router.push("/admin");
+    } catch (error: unknown) {
+      console.error("Erro no login admin:", error);
+
+      const firebaseError = error as { message?: string; code?: string };
+
+      if (firebaseError.message?.includes("não é administrador")) {
+        setError("Acesso negado. Você não tem permissões de administrador.");
+      } else if (firebaseError.code === "auth/user-not-found") {
+        setError("Usuário não encontrado.");
+      } else if (firebaseError.code === "auth/wrong-password") {
+        setError("Senha incorreta.");
+      } else if (firebaseError.code === "auth/invalid-email") {
+        setError("Email inválido.");
+      } else if (firebaseError.code === "auth/too-many-requests") {
+        setError("Muitas tentativas de login. Tente novamente mais tarde.");
+      } else {
+        setError(
+          "Erro ao fazer login. Verifique suas credenciais e tente novamente."
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
-      <form
-        onSubmit={handleLogin}
-        className="bg-white/90 p-8 rounded-lg shadow-lg flex flex-col gap-4 min-w-[320px]"
-      >
-        <h2 className="text-2xl font-bold text-blue-900 mb-2">Login Admin</h2>
-        <input
-          type="email"
-          placeholder="E-mail"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="border rounded px-3 py-2 text-gray-900 bg-white placeholder:text-gray-500"
-          required
-        />
-        <input
-          type="password"
-          placeholder="Senha"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="border rounded px-3 py-2 text-gray-900 bg-white placeholder:text-gray-500"
-          required
-        />
-        {error && <div className="text-red-600 text-sm">{error}</div>}
-        <button
-          type="submit"
-          className="bg-blue-800 hover:bg-blue-900 text-white font-semibold py-2 rounded mt-2 disabled:opacity-60"
-          disabled={loading}
-        >
-          {loading ? "Entrando..." : "Entrar"}
-        </button>
-      </form>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
+      <div className="max-w-md w-full">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mb-4">
+            <FaShieldAlt className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-3xl font-bold text-white mb-2">
+            Acesso Administrativo
+          </h1>
+          <p className="text-gray-300">
+            Faça login para acessar o painel de administração
+          </p>
+        </div>
+
+        {/* Form */}
+        <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 p-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 text-red-100 text-sm">
+                {error}
+              </div>
+            )}
+
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-medium text-gray-200 mb-2">
+                Email do Administrador
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaUser className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-600/50 rounded-lg bg-white/10 placeholder-gray-400 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  placeholder="admin@exemplo.com"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="block text-sm font-medium text-gray-200 mb-2">
+                Senha
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaLock className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="block w-full pl-10 pr-10 py-3 border border-gray-600/50 rounded-lg bg-white/10 placeholder-gray-400 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  placeholder="••••••••"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-300 transition-colors duration-200"
+                >
+                  {showPassword ? (
+                    <FaEyeSlash className="h-5 w-5" />
+                  ) : (
+                    <FaEye className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+            >
+              {loading ? (
+                <div className="flex items-center">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  Entrando...
+                </div>
+              ) : (
+                "Entrar como Admin"
+              )}
+            </button>
+          </form>
+
+          {/* Info */}
+          <div className="mt-6 text-center">
+            <p className="text-xs text-gray-400">
+              Apenas administradores autorizados podem acessar esta área.
+              <br />
+              Todas as tentativas de acesso são registradas.
+            </p>
+          </div>
+        </div>
+
+        {/* Back to main site */}
+        <div className="text-center mt-6">
+          <button
+            onClick={() => router.push("/")}
+            className="text-blue-400 hover:text-blue-300 text-sm transition-colors duration-200"
+          >
+            ← Voltar ao site principal
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

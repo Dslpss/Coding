@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   collection,
   getDocs,
@@ -7,11 +7,8 @@ import {
   doc,
   query,
   orderBy,
-  where,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { useAuthState } from "react-firebase-hooks/auth";
-import { auth } from "@/lib/firebase";
 import Link from "next/link";
 import {
   FaPlus,
@@ -21,7 +18,7 @@ import {
   FaChevronLeft,
   FaChevronRight,
 } from "react-icons/fa";
-import { checkAdminStatus, formatTimestamp } from "../utils/adminUtils";
+import { formatTimestamp } from "../utils/adminUtils";
 import AlertBanner from "../components/AlertBanner";
 
 interface BlogPost {
@@ -34,17 +31,15 @@ interface BlogPost {
   content?: string;
   tags?: string[];
   published?: boolean;
-  createdAt: any;
-  updatedAt?: any;
+  createdAt: Date | null;
+  updatedAt?: Date | null;
 }
 
 const POSTS_PER_PAGE = 10;
 
 export default function AdminBlog() {
-  const [user] = useAuthState(auth);
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPosts, setTotalPosts] = useState(0);
@@ -53,60 +48,26 @@ export default function AdminBlog() {
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
   const [alertType, setAlertType] = useState<"success" | "error">("success");
-
-  // Verificar se é admin
-  useEffect(() => {
-    const verifyAdmin = async () => {
-      if (user?.email) {
-        const adminStatus = await checkAdminStatus(user.email);
-        setIsAdmin(adminStatus);
-        if (!adminStatus) {
-          setAlertType("error");
-          setAlertMessage(
-            "Acesso negado. Você não tem permissões de administrador."
-          );
-          setShowAlert(true);
-        }
-      }
-    };
-
-    if (user) {
-      verifyAdmin();
-    }
-  }, [user]);
-
   const showMessage = (message: string, type: "success" | "error") => {
     setAlertMessage(message);
     setAlertType(type);
     setShowAlert(true);
     setTimeout(() => setShowAlert(false), 5000);
   };
-
-  async function fetchPosts() {
-    if (!isAdmin) return;
-
+  const fetchPosts = useCallback(async () => {
     setLoading(true);
 
     try {
-      let postsSnapshot;
+      console.log("Iniciando busca de posts...");
 
-      // Aplicar filtro de busca se houver
-      if (searchTerm) {
-        const searchQuery = query(
-          collection(db, "blog"),
-          where("title", ">=", searchTerm),
-          where("title", "<=", searchTerm + "\uf8ff"),
-          orderBy("title"),
-          orderBy("createdAt", "desc")
-        );
-        postsSnapshot = await getDocs(searchQuery);
-      } else {
-        const defaultQuery = query(
-          collection(db, "blog"),
-          orderBy("createdAt", "desc")
-        );
-        postsSnapshot = await getDocs(defaultQuery);
-      }
+      // Query mais simples para evitar problemas
+      const postsQuery = query(
+        collection(db, "blog"),
+        orderBy("createdAt", "desc")
+      );
+
+      const postsSnapshot = await getDocs(postsQuery);
+      console.log(`Encontrados ${postsSnapshot.size} posts`);
 
       const postsList = postsSnapshot.docs.map((doc) => {
         const data = doc.data();
@@ -125,30 +86,28 @@ export default function AdminBlog() {
         } as BlogPost;
       });
 
-      setTotalPosts(postsList.length);
-
-      // Aplicar paginação
+      setTotalPosts(postsList.length); // Aplicar paginação
       const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
       const endIndex = startIndex + POSTS_PER_PAGE;
       const paginatedPosts = postsList.slice(startIndex, endIndex);
 
       setPosts(paginatedPosts);
-    } catch (err: any) {
-      console.error("Erro ao buscar posts:", err);
+    } catch (error) {
+      console.error("Erro ao buscar posts:", error);
+
       showMessage(
-        "Não foi possível carregar os posts: " + err.message,
+        "Não foi possível carregar os posts: " +
+          (error instanceof Error ? error.message : "Erro desconhecido"),
         "error"
       );
     } finally {
       setLoading(false);
     }
-  }
+  }, [currentPage]);
 
   useEffect(() => {
-    if (isAdmin) {
-      fetchPosts();
-    }
-  }, [isAdmin, searchTerm, currentPage]);
+    fetchPosts();
+  }, [fetchPosts]);
 
   async function handleDelete(id: string, title: string) {
     if (
@@ -158,15 +117,18 @@ export default function AdminBlog() {
     ) {
       return;
     }
-
     try {
       await deleteDoc(doc(db, "blog", id));
       showMessage("Post excluído com sucesso!", "success");
       // Recarregar a lista
       fetchPosts();
-    } catch (err: any) {
-      console.error("Erro ao excluir post:", err);
-      showMessage("Erro ao excluir post: " + err.message, "error");
+    } catch (error) {
+      console.error("Erro ao excluir post:", error);
+      showMessage(
+        "Erro ao excluir post: " +
+          (error instanceof Error ? error.message : "Erro desconhecido"),
+        "error"
+      );
     }
   }
 
@@ -175,30 +137,7 @@ export default function AdminBlog() {
     setCurrentPage(1);
     fetchPosts();
   };
-
   const totalPages = Math.ceil(totalPosts / POSTS_PER_PAGE);
-
-  if (!user) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-gray-500">Carregando...</div>
-      </div>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="w-full">
-        {showAlert && (
-          <AlertBanner
-            message="Acesso negado. Você não tem permissões de administrador."
-            type="error"
-            onClose={() => setShowAlert(false)}
-          />
-        )}
-      </div>
-    );
-  }
 
   return (
     <div className="w-full">

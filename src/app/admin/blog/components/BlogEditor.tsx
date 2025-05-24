@@ -9,8 +9,6 @@ import {
   updateDoc,
   doc,
 } from "firebase/firestore";
-import { useAuthState } from "react-firebase-hooks/auth";
-import { auth } from "@/lib/firebase";
 import {
   FaImage,
   FaVideo,
@@ -21,6 +19,7 @@ import {
   FaSpinner,
 } from "react-icons/fa";
 import MarkdownRenderer from "./MarkdownRenderer";
+import { getAdminSession } from "../../utils/adminAuth";
 
 interface PostFormFields {
   title: string;
@@ -51,7 +50,6 @@ export default function BlogEditor({
   postId,
   onSave,
 }: BlogEditorProps) {
-  const [user] = useAuthState(auth);
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState(false);
   const [imagePreview, setImagePreview] = useState(initialData?.imageUrl || "");
@@ -100,10 +98,10 @@ export default function BlogEditor({
       .replace(/\s+/g, "-")
       .replace(/-+/g, "-");
   };
-
   const onSubmit: SubmitHandler<PostFormFields> = async (data) => {
-    if (!user) {
-      alert("Você precisa estar logado para publicar.");
+    const adminSession = getAdminSession();
+    if (!adminSession) {
+      alert("Você precisa estar logado como administrador.");
       return;
     }
 
@@ -123,8 +121,8 @@ export default function BlogEditor({
         videoUrl: data.videoUrl || null,
         tags: tagsArray,
         published: data.published,
-        authorId: user.uid,
-        authorName: user.displayName || user.email,
+        authorId: adminSession.email, // Usar email da sessão admin
+        authorName: adminSession.email, // Usar email da sessão admin
         updatedAt: serverTimestamp(),
       };
 

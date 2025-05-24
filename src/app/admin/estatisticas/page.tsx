@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuthState } from "react-firebase-hooks/auth";
-import { auth, db } from "../../../lib/firebase";
+import { isAdminAuthenticated, getAdminSession } from "../utils/adminAuth";
+import { db } from "../../../lib/firebase";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import {
   FaChartLine,
@@ -12,10 +12,10 @@ import {
   FaExclamationTriangle,
 } from "react-icons/fa";
 import AlertBanner from "../components/AlertBanner";
-import { checkAdminStatus, formatTimestamp } from "../utils/adminUtils";
+import { formatTimestamp } from "../utils/adminUtils";
+import { useRouter } from "next/navigation";
 
 export default function AdminEstatisticas() {
-  const [user] = useAuthState(auth);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState({
@@ -24,19 +24,14 @@ export default function AdminEstatisticas() {
     totalMatriculas: 0,
     crescimento: 0,
   });
-  // Função de verificação de admin importada de adminUtils
+  const router = useRouter();
 
   useEffect(() => {
-    if (!user) return;
-
     const fetchStats = async () => {
       try {
-        // Verificar se o usuário é admin
-        const adminStatus = await checkAdminStatus(user.email || "");
-
-        if (!adminStatus) {
-          setError("Você não tem permissão para visualizar estas estatísticas");
-          setLoading(false);
+        // Verificar se admin está autenticado
+        if (!isAdminAuthenticated()) {
+          router.push("/admin-login");
           return;
         }
 
@@ -57,7 +52,6 @@ export default function AdminEstatisticas() {
           totalMatriculas: matriculasCount,
           crescimento: 18, // Valor de exemplo
         });
-
         setLoading(false);
       } catch (err) {
         console.error("Erro ao buscar estatísticas:", err);
@@ -67,7 +61,7 @@ export default function AdminEstatisticas() {
     };
 
     fetchStats();
-  }, [user]);
+  }, [router]);
 
   if (loading) {
     return (

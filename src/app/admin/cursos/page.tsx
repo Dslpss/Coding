@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useAuthState } from "react-firebase-hooks/auth";
 import {
   collection,
   getDocs,
@@ -11,7 +10,7 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { db, auth } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import {
   FaPlus,
   FaEdit,
@@ -21,7 +20,7 @@ import {
   FaUsers,
 } from "react-icons/fa";
 import AlertBanner from "../components/AlertBanner";
-import { checkAdminStatus, formatTimestamp } from "../utils/adminUtils";
+import { formatTimestamp } from "../utils/adminUtils";
 
 interface Curso {
   id: string;
@@ -36,7 +35,6 @@ interface Curso {
 }
 
 export default function AdminCursosPage() {
-  const [user] = useAuthState(auth);
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -44,7 +42,6 @@ export default function AdminCursosPage() {
   const [preco, setPreco] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [isAdmin, setIsAdmin] = useState(false);
   const [success, setSuccess] = useState("");
   async function fetchCursos() {
     setLoading(true);
@@ -97,29 +94,15 @@ export default function AdminCursosPage() {
     }
     setLoading(false);
   }
+
   useEffect(() => {
-    if (!user) return;
-
-    const initialize = async () => {
-      // Verificar se o usuário é admin
-      const adminStatus = await checkAdminStatus(user.email || "");
-      setIsAdmin(adminStatus);
-
-      // Buscar cursos independentemente de ser admin (cursos são públicos)
-      fetchCursos();
-    };
-
-    initialize();
-  }, [user]);
+    // Buscar cursos na inicialização
+    fetchCursos();
+  }, []);
   async function handleAddCurso(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setSuccess("");
-
-    if (!isAdmin) {
-      setError("Você precisa ser administrador para criar cursos");
-      return;
-    }
 
     if (!nome.trim() || !descricao.trim()) {
       setError("Preencha pelo menos o nome e a descrição do curso");
@@ -159,11 +142,6 @@ export default function AdminCursosPage() {
     setLoading(false);
   }
   async function handleDelete(id: string) {
-    if (!isAdmin) {
-      setError("Você precisa ser administrador para excluir cursos");
-      return;
-    }
-
     if (
       !confirm(
         "Tem certeza que deseja remover este curso? Esta ação não pode ser desfeita."
@@ -189,22 +167,10 @@ export default function AdminCursosPage() {
   }
   return (
     <div className="w-full">
+      {" "}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Gerenciar Cursos</h1>
-        {isAdmin && (
-          <div className="flex items-center bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
-            <span className="h-2 w-2 bg-green-500 rounded-full mr-2"></span>
-            Acesso de administrador
-          </div>
-        )}
       </div>
-      {!isAdmin && (
-        <AlertBanner
-          type="warning"
-          title="Acesso limitado"
-          message="Você pode visualizar os cursos, mas precisa de permissões de administrador para criar, editar ou excluir."
-        />
-      )}
       {error && (
         <AlertBanner
           type="error"
@@ -220,113 +186,107 @@ export default function AdminCursosPage() {
         />
       )}{" "}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Add Course Form - only show if admin */}
-        {isAdmin && (
-          <div className="lg:col-span-1 bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-lg font-semibold mb-4 text-gray-700 border-b pb-2 flex items-center">
-              <FaPlus className="mr-2 text-blue-600" />
-              Adicionar Novo Curso
-            </h2>
-            <form onSubmit={handleAddCurso} className="flex flex-col gap-4">
-              <div>
-                <label
-                  htmlFor="nome"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Nome do curso *
-                </label>
-                <input
-                  id="nome"
-                  type="text"
-                  placeholder="Ex: JavaScript Avançado"
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  className="w-full text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                  required
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="descricao"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Descrição *
-                </label>
-                <textarea
-                  id="descricao"
-                  placeholder="Uma breve descrição do curso..."
-                  value={descricao}
-                  onChange={(e) => setDescricao(e.target.value)}
-                  rows={3}
-                  className="w-full text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                  required
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="nivel"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Nível
-                </label>
-                <select
-                  id="nivel"
-                  value={nivel}
-                  onChange={(e) => setNivel(e.target.value)}
-                  className="w-full text-gray-900 bg-white border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Selecione o nível</option>
-                  <option value="Iniciante">Iniciante</option>
-                  <option value="Intermediário">Intermediário</option>
-                  <option value="Avançado">Avançado</option>
-                </select>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="preco"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Preço (R$)
-                </label>
-                <input
-                  id="preco"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={preco}
-                  onChange={(e) => setPreco(e.target.value)}
-                  className="w-full text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Deixe vazio para curso gratuito
-                </p>
-              </div>
-
-              <button
-                type="submit"
-                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center"
-                disabled={loading}
+        {/* Add Course Form */}
+        <div className="lg:col-span-1 bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-lg font-semibold mb-4 text-gray-700 border-b pb-2 flex items-center">
+            <FaPlus className="mr-2 text-blue-600" />
+            Adicionar Novo Curso
+          </h2>
+          <form onSubmit={handleAddCurso} className="flex flex-col gap-4">
+            <div>
+              <label
+                htmlFor="nome"
+                className="block text-sm font-medium text-gray-700 mb-1"
               >
-                {loading ? (
-                  <FaSpinner className="animate-spin mr-2" />
-                ) : (
-                  <FaPlus className="mr-2" />
-                )}
-                {loading ? "Salvando..." : "Adicionar Curso"}
-              </button>
-            </form>
-          </div>
-        )}{" "}
+                Nome do curso *
+              </label>
+              <input
+                id="nome"
+                type="text"
+                placeholder="Ex: JavaScript Avançado"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                className="w-full text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                required
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="descricao"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Descrição *
+              </label>
+              <textarea
+                id="descricao"
+                placeholder="Uma breve descrição do curso..."
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
+                rows={3}
+                className="w-full text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                required
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="nivel"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Nível
+              </label>
+              <select
+                id="nivel"
+                value={nivel}
+                onChange={(e) => setNivel(e.target.value)}
+                className="w-full text-gray-900 bg-white border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Selecione o nível</option>
+                <option value="Iniciante">Iniciante</option>
+                <option value="Intermediário">Intermediário</option>
+                <option value="Avançado">Avançado</option>
+              </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor="preco"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Preço (R$)
+              </label>
+              <input
+                id="preco"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={preco}
+                onChange={(e) => setPreco(e.target.value)}
+                className="w-full text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Deixe vazio para curso gratuito
+              </p>
+            </div>
+
+            <button
+              type="submit"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center"
+              disabled={loading}
+            >
+              {loading ? (
+                <FaSpinner className="animate-spin mr-2" />
+              ) : (
+                <FaPlus className="mr-2" />
+              )}{" "}
+              {loading ? "Salvando..." : "Adicionar Curso"}
+            </button>
+          </form>
+        </div>
         {/* Courses List */}
-        <div
-          className={`${
-            isAdmin ? "lg:col-span-2" : "lg:col-span-3"
-          } bg-white rounded-lg shadow-md overflow-hidden`}
-        >
+        <div className="lg:col-span-2 bg-white rounded-lg shadow-md overflow-hidden">
           <div className="p-6">
             <h2 className="text-lg font-semibold text-gray-700 border-b pb-2 mb-4 flex items-center">
               <FaBook className="mr-2 text-gray-600" />
@@ -342,14 +302,12 @@ export default function AdminCursosPage() {
             <div className="px-6 pb-6">
               {cursos.length === 0 ? (
                 <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                  <FaBook className="mx-auto h-12 w-12 text-gray-400" />
+                  <FaBook className="mx-auto h-12 w-12 text-gray-400" />{" "}
                   <h3 className="mt-2 text-sm font-medium text-gray-600">
                     Nenhum curso cadastrado
                   </h3>
                   <p className="mt-1 text-sm text-gray-500">
-                    {isAdmin
-                      ? "Comece adicionando seu primeiro curso."
-                      : "Não há cursos disponíveis no momento."}
+                    Comece adicionando seu primeiro curso.
                   </p>
                 </div>
               ) : (
@@ -446,22 +404,15 @@ export default function AdminCursosPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex justify-end gap-2">
-                              {isAdmin ? (
-                                <>
-                                  <button
-                                    onClick={() => handleDelete(curso.id)}
-                                    className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
-                                    disabled={loading}
-                                  >
-                                    <FaTrash className="mr-1" size={12} />
-                                    Remover
-                                  </button>
-                                </>
-                              ) : (
-                                <span className="text-blue-200 text-sm">
-                                  Visualização
-                                </span>
-                              )}
+                              {" "}
+                              <button
+                                onClick={() => handleDelete(curso.id)}
+                                className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                                disabled={loading}
+                              >
+                                <FaTrash className="mr-1" size={12} />
+                                Remover
+                              </button>
                             </div>
                           </td>
                         </tr>

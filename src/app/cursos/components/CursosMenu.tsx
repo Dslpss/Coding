@@ -4,15 +4,14 @@ import { usePathname } from "next/navigation";
 import {
   FaHome,
   FaBookOpen,
-  FaChartLine,
-  FaNewspaper,
-  FaCog,
-  FaUser,
-  FaGlobe,
   FaGraduationCap,
+  FaChartBar,
+  FaUser,
+  FaCertificate,
+  FaNewspaper,
 } from "react-icons/fa";
 
-export default function NavigationMenu() {
+export default function CursosMenu() {
   const pathname = usePathname();
 
   const isActive = (path: string) => {
@@ -24,107 +23,101 @@ export default function NavigationMenu() {
       <div className="p-5 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-xl font-bold text-white flex items-center justify-center">
-            <span className="mr-2">SelfCoding</span>
+            <FaGraduationCap className="mr-2" />
+            <span>SelfCoding</span>
           </h2>
+          <p className="text-blue-200 text-sm mt-1">Cursos de Programação</p>
         </div>
       </div>
 
       <div className="p-2">
         <div
           className={`flex items-center p-3 mb-2 ${
-            isActive("/dashboard")
+            isActive("/")
               ? "bg-blue-700 rounded-lg"
-              : "hover:bg-blue-700 rounded-lg"
+              : "hover:bg-blue-700/60 rounded-lg transition-colors duration-200"
           }`}
         >
           <FaHome className="text-white mr-3" />
-          <Link href="/dashboard" className="text-white flex-1">
-            Dashboard
+          <Link href="/" className="text-white flex-1">
+            Início
           </Link>
-          {isActive("/dashboard") && (
+          {isActive("/") && (
             <span className="bg-blue-500 text-xs px-2 py-1 rounded">Atual</span>
           )}
-        </div>{" "}
+        </div>
+
         <div
           className={`flex items-center p-3 mb-2 ${
             isActive("/cursos")
               ? "bg-blue-700 rounded-lg"
-              : "hover:bg-blue-700 rounded-lg"
+              : "hover:bg-blue-700/60 rounded-lg transition-colors duration-200"
           }`}
         >
           <FaBookOpen className="text-white mr-3" />
           <Link href="/cursos" className="text-white flex-1">
-            Cursos
+            Todos os Cursos
           </Link>
-        </div>{" "}
+          {isActive("/cursos") && (
+            <span className="bg-blue-500 text-xs px-2 py-1 rounded">Atual</span>
+          )}
+        </div>
+
         <div
           className={`flex items-center p-3 mb-2 ${
-            isActive("/dashboard/meus-cursos")
+            isActive("/dashboard")
               ? "bg-blue-700 rounded-lg"
-              : "hover:bg-blue-700 rounded-lg"
+              : "hover:bg-blue-700/60 rounded-lg transition-colors duration-200"
           }`}
         >
-          <FaGraduationCap className="text-white mr-3" />
-          <Link href="/dashboard/meus-cursos" className="text-white flex-1">
+          <FaUser className="text-white mr-3" />
+          <Link href="/dashboard" className="text-white flex-1">
             Meus Cursos
           </Link>
+          {isActive("/dashboard") && (
+            <span className="bg-blue-500 text-xs px-2 py-1 rounded">Atual</span>
+          )}
         </div>
+
         <div
           className={`flex items-center p-3 mb-2 ${
             isActive("/progresso")
               ? "bg-blue-700 rounded-lg"
-              : "hover:bg-blue-700 rounded-lg"
+              : "hover:bg-blue-700/60 rounded-lg transition-colors duration-200"
           }`}
         >
-          <FaChartLine className="text-white mr-3" />
+          <FaChartBar className="text-white mr-3" />
           <Link href="/progresso" className="text-white flex-1">
             Meu Progresso
           </Link>
+          {isActive("/progresso") && (
+            <span className="bg-blue-500 text-xs px-2 py-1 rounded">Atual</span>
+          )}
         </div>
+
         <div
           className={`flex items-center p-3 mb-2 ${
             isActive("/blog")
               ? "bg-blue-700 rounded-lg"
-              : "hover:bg-blue-700 rounded-lg"
+              : "hover:bg-blue-700/60 rounded-lg transition-colors duration-200"
           }`}
         >
           <FaNewspaper className="text-white mr-3" />
           <Link href="/blog" className="text-white flex-1">
             Blog
           </Link>
+          {isActive("/blog") && (
+            <span className="bg-blue-500 text-xs px-2 py-1 rounded">Atual</span>
+          )}
         </div>
-        <div
-          className={`flex items-center p-3 mb-2 ${
-            isActive("/configuracoes")
-              ? "bg-blue-700 rounded-lg"
-              : "hover:bg-blue-700 rounded-lg"
-          }`}
-        >
-          <FaCog className="text-white mr-3" />
-          <Link href="/configuracoes" className="text-white flex-1">
-            Configurações
-          </Link>
-        </div>
-        <div
-          className={`flex items-center p-3 mb-2 ${
-            isActive("/perfil")
-              ? "bg-blue-700 rounded-lg"
-              : "hover:bg-blue-700 rounded-lg"
-          }`}
-        >
-          <FaUser className="text-white mr-3" />
-          <Link href="/perfil" className="text-white flex-1">
-            Perfil
-          </Link>
-        </div>
-        <div className="mt-8 p-3 bg-blue-600 hover:bg-blue-500 rounded-lg text-center">
-          <Link
-            href="#"
-            className="text-white flex items-center justify-center"
-          >
-            <FaGlobe className="mr-2" />
-            Plataforma online
-          </Link>
+      </div>
+
+      <div className="p-4 border-t border-blue-700">
+        <div className="text-center">
+          <p className="text-blue-200 text-xs">Transforme sua carreira com</p>
+          <p className="text-white font-semibold text-sm">
+            Programação de Qualidade
+          </p>
         </div>
       </div>
     </div>

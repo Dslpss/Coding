@@ -1,10 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
-import { checkAdminStatus } from "../utils/authGuard";
-import { useAuthState } from "react-firebase-hooks/auth";
+import { adminAuth, isAdminAuthenticated } from "../utils/adminAuth";
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
@@ -12,54 +9,27 @@ export default function AdminLoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const [user] = useAuthState(auth);
 
-  // Verifica se o usuário já está logado e é admin
+  // Verifica se o admin já está logado
   useEffect(() => {
-    const checkAuth = async () => {
-      if (user?.email) {
-        const isAdmin = await checkAdminStatus(user.email);
-        if (isAdmin) {
-          router.replace("/admin");
-        }
-      }
-    };
-
-    checkAuth();
-  }, [user, router]);
-
+    if (isAdminAuthenticated()) {
+      router.replace("/admin");
+    }
+  }, [router]);
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-
-      if (!userCredential.user.email) {
-        throw new Error("Email não encontrado");
-      }
-
-      const isAdmin = await checkAdminStatus(userCredential.user.email);
-
-      if (isAdmin) {
-        localStorage.setItem("adminStatus", "true");
-        router.replace("/admin");
-      } else {
-        setError("Você não tem permissões de administrador");
-        await auth.signOut();
-      }
+      await adminAuth.loginAdmin(email, password);
+      router.replace("/admin");
     } catch (err) {
-      console.error("Erro no login:", err);
+      console.error("Erro no login admin:", err);
       setError(
         "Erro ao fazer login: " +
           (err instanceof Error ? err.message : "Erro desconhecido")
       );
-      localStorage.removeItem("adminStatus");
     }
 
     setLoading(false);

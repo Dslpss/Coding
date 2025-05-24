@@ -1,8 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, increment, updateDoc } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  increment,
+  updateDoc,
+  collection,
+  query,
+  where,
+  limit,
+  getDocs,
+} from "firebase/firestore";
 import { FaCalendar, FaUser, FaEye, FaTags, FaArrowLeft } from "react-icons/fa";
 import Link from "next/link";
 import Image from "next/image";
@@ -34,42 +44,81 @@ function BlogPost({ id }: { id: string }) {
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
     const fetchPost = async () => {
       try {
+        // Primeiro tenta buscar pelo ID direto
         const postRef = doc(db, "blog", id);
         const postSnap = await getDoc(postRef);
 
-        if (!postSnap.exists()) {
-          setError("Post não encontrado");
-          setLoading(false);
-          return;
+        if (postSnap.exists()) {
+          const postData = postSnap.data();
+          const post: Post = {
+            id: postSnap.id,
+            title: postData.title || "Sem título",
+            content: postData.content || "",
+            summary: postData.summary || "",
+            imageUrl: postData.imageUrl || null,
+            videoUrl: postData.videoUrl || null,
+            tags: postData.tags || [],
+            authorName: postData.authorName || "Admin",
+            published: true,
+            views: postData.views || 0,
+            createdAt: postData.createdAt?.toDate
+              ? postData.createdAt.toDate()
+              : new Date(),
+          };
+
+          setPost(post);
+
+          // Incrementa o contador de visualizações
+          await updateDoc(postRef, {
+            views: increment(1),
+          });
+        } else {
+          // Se não encontrou pelo ID, tenta buscar pelo slug
+          console.log("Post não encontrado pelo ID, buscando pelo slug:", id);
+
+          const q = query(
+            collection(db, "blog"),
+            where("slug", "==", id),
+            limit(1)
+          );
+
+          const querySnapshot = await getDocs(q);
+
+          if (!querySnapshot.empty) {
+            const docSnap = querySnapshot.docs[0];
+            const postData = docSnap.data();
+
+            const post: Post = {
+              id: docSnap.id,
+              title: postData.title || "Sem título",
+              content: postData.content || "",
+              summary: postData.summary || "",
+              imageUrl: postData.imageUrl || null,
+              videoUrl: postData.videoUrl || null,
+              tags: postData.tags || [],
+              authorName: postData.authorName || "Admin",
+              published: true,
+              views: postData.views || 0,
+              createdAt: postData.createdAt?.toDate
+                ? postData.createdAt.toDate()
+                : new Date(),
+            };
+
+            setPost(post);
+
+            // Incrementa o contador de visualizações
+            await updateDoc(docSnap.ref, {
+              views: increment(1),
+            });
+          } else {
+            setError("Post não encontrado");
+            setLoading(false);
+            return;
+          }
         }
-
-        const postData = postSnap.data();
-        const post: Post = {
-          id: postSnap.id,
-          title: postData.title || "Sem título",
-          content: postData.content || "",
-          summary: postData.summary || "",
-          imageUrl: postData.imageUrl || null,
-          videoUrl: postData.videoUrl || null,
-          tags: postData.tags || [],
-          authorName: postData.authorName || "Admin",
-          published: true,
-          views: postData.views || 0,
-          createdAt: postData.createdAt?.toDate
-            ? postData.createdAt.toDate()
-            : new Date(),
-        };
-
-        setPost(post);
-
-        // Incrementa o contador de visualizações
-        await updateDoc(postRef, {
-          views: increment(1),
-        });
       } catch (error) {
         console.error("Erro ao buscar post:", error);
         setError("Erro ao carregar o post");
@@ -174,10 +223,16 @@ function BlogPost({ id }: { id: string }) {
   );
 }
 
-export default function BlogPostPage({ params }: { params: { id: string } }) {
+export default function BlogPostPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-950 via-blue-900 to-blue-950">
-      <BlogPost id={params.id} />
+      <BlogPost id={id} />
     </div>
   );
 }

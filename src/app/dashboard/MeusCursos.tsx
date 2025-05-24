@@ -24,7 +24,6 @@ export default function MeusCursos() {
   const [user] = useAuthState(auth);
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     if (!user) return;
     const fetchMatriculas = async () => {
@@ -52,6 +51,17 @@ export default function MeusCursos() {
       setLoading(false);
     };
     fetchMatriculas();
+
+    // Listener para eventos de desmatrícula
+    const handleDesmatricula = () => {
+      fetchMatriculas();
+    };
+
+    window.addEventListener("cursoDesmatriculado", handleDesmatricula);
+
+    return () => {
+      window.removeEventListener("cursoDesmatriculado", handleDesmatricula);
+    };
   }, [user]);
 
   if (!user) return null;
@@ -78,16 +88,16 @@ export default function MeusCursos() {
 
   return (
     <div className="bg-blue-800/10 rounded-lg p-4 w-full">
+      {" "}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-blue-100">Meus Cursos</h2>
         <Link
-          href="/cursos"
+          href="/dashboard/meus-cursos"
           className="text-blue-300 hover:text-blue-200 text-sm flex items-center"
         >
           Ver todos <FaArrowRight className="ml-1 text-xs" />
         </Link>
       </div>
-
       <div className="space-y-4">
         {cursos.map((curso) => (
           <div

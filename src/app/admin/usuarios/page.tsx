@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useAuthState } from "react-firebase-hooks/auth";
-import { auth, db } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import {
   collection,
   doc,
@@ -20,7 +19,6 @@ import {
 import { FaUser, FaSearch } from "react-icons/fa";
 import Image from "next/image";
 import AlertBanner from "../components/AlertBanner";
-import { checkAdminStatus } from "../utils/adminUtils";
 
 interface User {
   id: string;
@@ -35,21 +33,16 @@ interface User {
 }
 
 export default function AdminUsuarios() {
-  const [user] = useAuthState(auth);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [lastVisible, setLastVisible] =
     useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMore, setHasMore] = useState(true);
-
   // Buscar usuários
   const fetchUsers = useCallback(
     async (startAfterDoc?: QueryDocumentSnapshot<DocumentData>) => {
-      if (!isAdmin) return;
-
       console.log("Iniciando busca de usuários como admin...");
       setLoading(true);
 
@@ -131,65 +124,17 @@ export default function AdminUsuarios() {
         setLoading(false);
       }
     },
-    [isAdmin]
+    []
   );
-
-  // Verificar status de admin quando o usuário mudar
+  // Buscar usuários na inicialização
   useEffect(() => {
-    let mounted = true;
-
-    const checkAdmin = async () => {
-      if (!user?.email) {
-        if (mounted) {
-          setLoading(false);
-          setError("Usuário não autenticado");
-        }
-        return;
-      }
-
-      try {
-        console.log("Verificando status de admin para:", user.email);
-        const adminStatus = await checkAdminStatus(user.email);
-        console.log("Status de admin recebido:", adminStatus);
-
-        if (mounted) {
-          setIsAdmin(adminStatus);
-          if (!adminStatus) {
-            setLoading(false);
-            setError("Você não tem permissões de administrador");
-          }
-        }
-      } catch (err) {
-        console.error("Erro ao verificar status de admin:", err);
-        if (mounted) {
-          setError("Erro ao verificar permissões");
-          setLoading(false);
-        }
-      }
-    };
-
-    checkAdmin();
-
-    return () => {
-      mounted = false;
-    };
-  }, [user]);
-
-  // Buscar usuários quando o status de admin mudar
-  useEffect(() => {
-    console.log("Status de admin mudou:", isAdmin);
-    if (isAdmin) {
-      fetchUsers();
-    }
-  }, [isAdmin, fetchUsers]);
-
+    fetchUsers();
+  }, [fetchUsers]);
   // Atualizar status do usuário
   const updateUserStatus = async (
     userId: string,
     status: "active" | "inactive" | "banned"
   ) => {
-    if (!isAdmin) return;
-
     try {
       await updateDoc(doc(db, "users", userId), {
         status: status,
@@ -207,11 +152,8 @@ export default function AdminUsuarios() {
       setError("Erro ao atualizar status: " + error.message);
     }
   };
-
   // Excluir usuário
   const handleDelete = async (userId: string, userName: string) => {
-    if (!isAdmin) return;
-
     if (!confirm(`Tem certeza que deseja excluir o usuário ${userName}?`)) {
       return;
     }

@@ -1,16 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -24,39 +13,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-br">
-      <body className="min-h-screen w-full bg-gradient-to-br from-blue-900 via-blue-700 to-purple-800 flex flex-col">
-        <nav className="w-full bg-white/90 shadow-md py-3 px-6 flex items-center justify-between sticky top-0 z-20">
-          <div className="flex items-center gap-2">
-            <span className="text-xl font-bold text-blue-800">Self Coding</span>
-          </div>
-          <div className="flex gap-4 text-blue-900 font-semibold text-sm">
-            <a
-              href="/dashboard"
-              className="hover:text-blue-700 transition-colors"
-            >
-              Dashboard
-            </a>
-            <a href="/cursos" className="hover:text-blue-700 transition-colors">
-              Cursos
-            </a>
-            <a
-              href="/progresso"
-              className="hover:text-blue-700 transition-colors"
-            >
-              Progresso
-            </a>
-            <a href="/blog" className="hover:text-blue-700 transition-colors">
-              Blog
-            </a>
-            <a
-              href="/categorias"
-              className="hover:text-blue-700 transition-colors"
-            >
-              Categorias
-            </a>
-          </div>
-        </nav>
-        <main className="flex-1 flex flex-col">{children}</main>
+      <body className="min-h-screen w-full bg-gradient-to-br from-blue-900 via-blue-700 to-purple-800">
+        {children}
       </body>
     </html>
   );

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import { db } from "@/lib/firebase";
 import {
   doc,
@@ -30,7 +30,12 @@ interface Capitulo {
   videos: Video[];
 }
 
-export default function CursoPage({ params }: { params: { id: string } }) {
+export default function CursoPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
   const [curso, setCurso] = useState<Curso | null>(null);
   const [capitulos, setCapitulos] = useState<Capitulo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,16 +49,15 @@ export default function CursoPage({ params }: { params: { id: string } }) {
       setError("");
       try {
         // Buscar dados do curso
-        const ref = doc(db, "cursos", params.id);
+        const ref = doc(db, "cursos", id);
         const snap = await getDoc(ref);
         if (snap.exists()) {
           setCurso({ id: snap.id, ...snap.data() } as Curso);
         } else {
           setError("Curso não encontrado.");
-        }
-        // Buscar capítulos e vídeos
+        } // Buscar capítulos e vídeos
         const q = query(
-          collection(db, "cursos", params.id, "chapters"),
+          collection(db, "cursos", id, "chapters"),
           orderBy("createdAt", "asc")
         );
         const snapCap = await getDocs(q);
@@ -61,14 +65,7 @@ export default function CursoPage({ params }: { params: { id: string } }) {
           snapCap.docs.map(async (docCap) => {
             const data = docCap.data();
             const videosSnap = await getDocs(
-              collection(
-                db,
-                "cursos",
-                params.id,
-                "chapters",
-                docCap.id,
-                "videos"
-              )
+              collection(db, "cursos", id, "chapters", docCap.id, "videos")
             );
             let videos: Video[] = videosSnap.docs.map(
               (v) =>
