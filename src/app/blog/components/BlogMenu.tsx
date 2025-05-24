@@ -6,7 +6,6 @@ import {
   FaBookOpen,
   FaNewspaper,
   FaTags,
-  FaSearch,
   FaGlobe,
   FaUser,
 } from "react-icons/fa";
@@ -59,17 +58,6 @@ export default function BlogMenu() {
           <Link href="/blog/categorias" className="text-white flex-1">
             Categorias
           </Link>
-        </div>
-
-        <div className="px-3 py-4">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Pesquisar posts..."
-              className="w-full bg-blue-900/50 text-white placeholder-blue-300 rounded-lg py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <FaSearch className="absolute left-3 top-3 text-blue-300" />
-          </div>
         </div>
 
         <div className="border-t border-blue-700/50 mt-4 pt-4">

@@ -272,16 +272,6 @@ export default function AdminPage() {
           message="Você não tem permissões de administrador completas. Algumas informações podem não estar disponíveis. Entre em contato com um administrador se precisar de acesso completo."
         />
       )}
-      {/* Aviso de problemas de acesso específicos */}
-      {(stats.totalAlunos === 0 ||
-        stats.totalCursos === 0 ||
-        stats.totalPosts === 0) && (
-        <AlertBanner
-          type="error"
-          title="Erro de acesso"
-          message="Algumas coleções do Firebase não puderam ser acessadas. Verifique as regras de segurança do Firestore e certifique-se de que as coleções existem no banco de dados."
-        />
-      )}
       {/* Stats Cards */}
       <AdminStats
         totalAlunos={stats.totalAlunos}
