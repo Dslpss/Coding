@@ -1,55 +1,78 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Função auxiliar para verificar se o usuário é admin
-    function isAdmin() {
+    // Função para verificar se o usuário é admin e está ativo
+    function isAdminAndActive() {
       let adminId = request.auth.token.email.replace('.', '_').replace('@', '_');
+      let adminDoc = getAfter(/databases/$(database)/documents/admins/$(adminId));
       return request.auth != null && 
-             exists(/databases/$(database)/documents/admins/$(adminId));
+             exists(/databases/$(database)/documents/admins/$(adminId)) &&
+             adminDoc != null && 
+             adminDoc.data.active == true;
     }
 
-    // Permite leitura da coleção admins para usuários autenticados
+    // Função para verificar permissões específicas
+    function hasAdminPermission(permission) {
+      let adminId = request.auth.token.email.replace('.', '_').replace('@', '_');
+      let adminDoc = getAfter(/databases/$(database)/documents/admins/$(adminId));
+      return adminDoc != null && 
+             adminDoc.data.permissions[permission] == true;
+    }    // Regras para coleção de admins
     match /admins/{adminId} {
-      allow read: if request.auth != null;
-      allow write: if false;
+      allow read: if request.auth != null && isAdminAndActive();
+      allow write: if request.auth != null && 
+                  isAdminAndActive() && 
+                  hasAdminPermission('manage_admins');
     }
 
-    // Protege escrita em cursos
+    // Regras para coleção de cursos
     match /cursos/{docId} {
       allow read: if true; // leitura pública
-      allow write: if request.auth != null; // Temporariamente para debug
+      allow write: if request.auth != null && 
+                  isAdminAndActive() && 
+                  hasAdminPermission('manage_courses');
     }
 
-    // Protege escrita em blog
+    // Regras para coleção de blog
     match /blog/{docId} {
       allow read: if true; // leitura pública
-      allow write: if request.auth != null; // Temporariamente para debug
+      allow write: if request.auth != null && 
+                  isAdminAndActive() && 
+                  hasAdminPermission('manage_blog');
     }    // Regras para a coleção de usuários
     match /users/{userId} {
-      allow read: if isAdmin() || request.auth.uid == userId;  // Admin pode ler qualquer usuário, usuário pode ler próprio perfil
-      allow list: if isAdmin();  // Apenas admin pode listar todos os usuários
-      allow write: if isAdmin() || request.auth.uid == userId;  // Admin pode modificar qualquer usuário, usuário pode modificar próprio perfil
+      allow read: if request.auth != null && 
+                 (request.auth.uid == userId || isAdminAndActive());
+      allow list: if request.auth != null && 
+                 isAdminAndActive() && 
+                 hasAdminPermission('manage_users');
+      allow write: if request.auth != null && 
+                 (request.auth.uid == userId || 
+                  (isAdminAndActive() && hasAdminPermission('manage_users')));
     }
 
     // Regras para a coleção de matrículas
     match /matriculas/{matriculaId} {
       allow read: if request.auth != null && 
-                  request.auth.uid == resource.data.userId;
+                 (request.auth.uid == resource.data.userId || 
+                  isAdminAndActive());
       allow create: if request.auth != null && 
                    request.auth.uid == request.resource.data.userId;
-      allow update, delete: if request.auth != null; // Temporariamente para debug
+      allow update, delete: if request.auth != null && 
+                          (request.auth.uid == resource.data.userId || 
+                           (isAdminAndActive() && hasAdminPermission('manage_matriculas')));
     }
 
-    // Regras para a coleção adminLogins
+    // Regras para a coleção adminLogins (logs de tentativas)
     match /adminLogins/{loginId} {
-      allow read: if true;
-      allow write: if false;
+      allow read: if request.auth != null && isAdminAndActive();
+      allow create: if request.auth != null;
+      allow update, delete: if false; // Logs nunca devem ser modificados
     }
 
-    // Regra padrão - temporariamente mais permissiva para debug
+    // Regra padrão - bloqueada por segurança
     match /{document=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }
