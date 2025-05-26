@@ -1,12 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  isAdminAuthenticated,
-  getAdminSession,
-  logoutAdmin,
-  renewAdminSession,
-} from "./utils/adminAuth";
 import "../globals.css";
 import AdminSidebar from "./AdminSidebar";
 import AdminHeader from "./AdminHeader";
@@ -16,38 +10,46 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [checking, setChecking] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [adminEmail, setAdminEmail] = useState<string>("");
+  const [adminData, setAdminData] = useState<{
+    email: string;
+    role: string;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    const validateAdmin = async () => {
-      // Verifica se admin está autenticado
-      if (!isAdminAuthenticated()) {
-        router.push("/admin/login");
+    // Verificar se a sessão é válida através da API
+    const validateSession = async () => {
+      try {
+        const response = await fetch("/api/admin/auth/verify", {
+          credentials: "include", // Incluir cookies
+        });
+        if (response.ok) {
+          const data = await response.json();
+          // Usar o email retornado pela API
+          setAdminData({
+            email: data.email || "admin@exemplo.com",
+            role: data.role,
+          });
+        } else {
+          // Se a API retornar erro, redirecionar para login
+          router.push("/admin-login");
+          return;
+        }
+      } catch (error) {
+        console.error("Erro ao verificar sessão:", error);
+        router.push("/admin-login");
         return;
       }
 
-      // Obter dados da sessão admin
-      const session = getAdminSession();
-      if (session) {
-        setAdminEmail(session.email);
-        setIsAdmin(true);
-
-        // Renovar sessão para manter ativa
-        renewAdminSession();
-      } else {
-        router.push("/admin/login");
-      }
-
-      setChecking(false);
+      setLoading(false);
     };
-    validateAdmin();
+
+    validateSession();
   }, [router]);
   // Loading enquanto verifica autenticação
-  if (checking) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-blue-950 via-blue-900 to-blue-950 flex items-center justify-center">
         <div className="text-center text-white">
@@ -58,27 +60,35 @@ export default function AdminLayout({
     );
   }
 
-  // Se não for admin, retorna nulo e deixa o redirecionamento acontecer
-  if (!isAdmin) {
+  // Se não tiver dados do admin, mostrar loading
+  if (!adminData) {
     return null;
   }
+
   const handleLogout = async () => {
-    logoutAdmin();
-    router.push("/admin/login");
+    // Limpar cookie de sessão via API
+    try {
+      await fetch("/api/admin/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (error) {
+      console.error("Erro no logout:", error);
+    }
+    router.push("/admin-login");
   };
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
-
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-blue-950 via-blue-900 to-blue-950 flex flex-col">
       {" "}
       <AdminHeader
-        userEmail={adminEmail}
+        userEmail={adminData.email}
         toggleSidebar={toggleSidebar}
         isSidebarOpen={sidebarOpen}
-        isAdmin={isAdmin}
+        isAdmin={true}
       />
       <div className="flex-1 flex">
         <div
@@ -89,7 +99,10 @@ export default function AdminLayout({
           `}
         >
           <div className="h-full overflow-y-auto">
-            <AdminSidebar handleLogout={handleLogout} userEmail={adminEmail} />
+            <AdminSidebar
+              handleLogout={handleLogout}
+              userEmail={adminData.email}
+            />
           </div>
         </div>
 

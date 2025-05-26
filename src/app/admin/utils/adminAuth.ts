@@ -13,10 +13,11 @@ interface AdminSession {
 class AdminAuth {
   private static instance: AdminAuth;
   private adminSession: AdminSession | null = null;
-
   constructor() {
-    // Restaurar sessão admin do localStorage na inicialização
-    this.restoreSession();
+    // Restaurar sessão admin do localStorage na inicialização apenas no client-side
+    if (typeof window !== "undefined") {
+      this.restoreSession();
+    }
   }
 
   static getInstance(): AdminAuth {
@@ -101,10 +102,13 @@ class AdminAuth {
         email,
         token,
         expiresAt,
-      };
-
-      // Salvar no localStorage
-      localStorage.setItem("adminSession", JSON.stringify(this.adminSession));
+      }; // Salvar no localStorage
+      if (
+        typeof window !== "undefined" &&
+        typeof localStorage !== "undefined"
+      ) {
+        localStorage.setItem("adminSession", JSON.stringify(this.adminSession));
+      }
 
       return true;
     } catch (error) {
@@ -139,15 +143,20 @@ class AdminAuth {
   getAdminSession(): AdminSession | null {
     return this.adminSession;
   }
-
   // Logout admin (apenas remove a sessão administrativa)
   logoutAdmin(): void {
     this.adminSession = null;
-    localStorage.removeItem("adminSession");
+    if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+      localStorage.removeItem("adminSession");
+    }
   }
-
   // Restaurar sessão do localStorage
   private restoreSession(): void {
+    // Verificar se estamos no browser
+    if (typeof window === "undefined" || typeof localStorage === "undefined") {
+      return;
+    }
+
     try {
       const stored = localStorage.getItem("adminSession");
       if (stored) {
@@ -162,15 +171,21 @@ class AdminAuth {
       }
     } catch (error) {
       console.error("Erro ao restaurar sessão admin:", error);
-      localStorage.removeItem("adminSession");
+      if (typeof localStorage !== "undefined") {
+        localStorage.removeItem("adminSession");
+      }
     }
   }
-
   // Renovar sessão admin
   renewSession(): void {
     if (this.adminSession) {
       this.adminSession.expiresAt = Date.now() + 8 * 60 * 60 * 1000;
-      localStorage.setItem("adminSession", JSON.stringify(this.adminSession));
+      if (
+        typeof window !== "undefined" &&
+        typeof localStorage !== "undefined"
+      ) {
+        localStorage.setItem("adminSession", JSON.stringify(this.adminSession));
+      }
     }
   }
 }

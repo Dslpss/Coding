@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { db } from "@/lib/firebase";
 import Link from "next/link";
-import { collection, getDocs, query, limit, orderBy } from "firebase/firestore";
 import AdminStats from "./AdminStats";
 import {
   FaBookOpen,
@@ -12,13 +10,12 @@ import {
   FaChartBar,
   FaExclamationTriangle,
 } from "react-icons/fa";
-import { getAdminSession } from "./utils/adminAuth";
 
 interface RecentActivity {
   id: string;
   type: string;
   title: string;
-  date: Date | { seconds: number; nanoseconds: number };
+  date: string;
   user?: string;
 }
 
@@ -36,188 +33,51 @@ export default function AdminPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Obter dados da sessão admin
-        const session = getAdminSession();
-        if (!session) {
-          setError("Sessão administrativa não encontrada");
-          setLoading(false);
+        console.log("🔍 Buscando estatísticas via API...");
+        setLoading(true);
+
+        // Buscar estatísticas via API
+        const response = await fetch("/api/admin/stats", {
+          credentials: "include", // Incluir cookies de sessão
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            setError("Sessão expirada. Faça login novamente.");
+          } else if (response.status === 403) {
+            setError("Acesso negado. Permissões insuficientes.");
+          } else {
+            setError(`Erro ${response.status}: ${response.statusText}`);
+          }
           return;
         }
 
-        console.log("Iniciando busca de dados administrativos...");
+        const data = await response.json();
+        console.log("✅ Estatísticas recebidas:", data);
 
-        // Buscar estatísticas e atividades recentes
-        console.log(`Admin ${session.email} acessando painel`);
-
-        // Inicializa contadores
-        let cursosCount = 0;
-        let postsCount = 0;
-        let alunosCount = 0;
-        let recentActivitiesList: RecentActivity[] = [];
-
-        // Buscar cursos - pela regra do Firestore, esta coleção tem leitura pública
-        try {
-          const cursosSnapshot = await getDocs(collection(db, "cursos"));
-          cursosCount = cursosSnapshot.size;
-          console.log(`Total de cursos encontrados: ${cursosCount}`);
-        } catch (err) {
-          console.log("Erro ao buscar cursos:", err);
-        }
-
-        // Buscar posts do blog - pela regra do Firestore, esta coleção tem leitura pública
-        try {
-          const blogSnapshot = await getDocs(collection(db, "blog"));
-          postsCount = blogSnapshot.size;
-          console.log(`Total de posts encontrados: ${postsCount}`);
-
-          // Buscar posts recentes do blog independentemente do tamanho da coleção
-          try {
-            // Correção: Buscamos posts do blog diretamente, mesmo se blogSnapshot.size for 0
-            const blogQuery = query(
-              collection(db, "blog"),
-              orderBy("createdAt", "desc"),
-              limit(5) // Aumentamos o limite para garantir mais posts
-            );
-            const recentBlogSnapshot = await getDocs(blogQuery);
-
-            console.log("Posts do blog encontrados:", recentBlogSnapshot.size);
-
-            const blogActivities = recentBlogSnapshot.docs.map((doc) => {
-              const data = doc.data();
-              return {
-                id: doc.id,
-                type: "post",
-                title: data.title || "Novo post no blog",
-                date: data.createdAt?.toDate() || new Date(), // Convertemos Timestamp para Date
-                user: data.authorId,
-              };
-            });
-
-            recentActivitiesList = [...recentActivitiesList, ...blogActivities];
-          } catch (err) {
-            console.log("Erro ao buscar posts recentes:", err);
-          }
-        } catch (err) {
-          console.log("Erro ao buscar blog:", err);
-        }
-
-        // Buscar usuários
-        try {
-          const usuariosSnapshot = await getDocs(collection(db, "users"));
-          alunosCount = usuariosSnapshot.size;
-          console.log("Total de alunos encontrados:", alunosCount); // Adicionar atividades recentes de usuários
-          if (usuariosSnapshot.size > 0) {
-            // Obter os 5 usuários mais recentes para mostrar na atividade
-            const recentUsersQuery = query(
-              collection(db, "users"),
-              orderBy("createdAt", "desc"),
-              limit(5)
-            );
-
-            const recentUsersSnapshot = await getDocs(recentUsersQuery);
-            const userActivities = recentUsersSnapshot.docs.map((doc) => {
-              const data = doc.data();
-              return {
-                id: doc.id,
-                type: "usuario",
-                title: `Novo usuário: ${
-                  data.displayName || data.email || "Sem nome"
-                }`,
-                date: data.createdAt || new Date(),
-                user: doc.id,
-              };
-            });
-
-            recentActivitiesList = [...recentActivitiesList, ...userActivities];
-          }
-        } catch (err) {
-          console.log("Erro ao buscar usuários:", err);
-          // Não é um erro crítico, apenas não mostramos este dado
-        }
-
-        // Buscar matrículas
-        try {
-          const matriculasQuery = query(
-            collection(db, "matriculas"),
-            orderBy("createdAt", "desc"),
-            limit(5)
-          );
-
-          const matriculasSnapshot = await getDocs(matriculasQuery);
-          console.log(`Matrículas encontradas: ${matriculasSnapshot.size}`);
-
-          const matriculasActivities = matriculasSnapshot.docs.map((doc) => {
-            const data = doc.data();
-            return {
-              id: doc.id,
-              type: "matricula",
-              title: `Nova matrícula: ${
-                data.cursoNome || "Curso não especificado"
-              }`,
-              date: data.createdAt || new Date(),
-              user: data.userId,
-            };
-          });
-
-          recentActivitiesList = [
-            ...recentActivitiesList,
-            ...matriculasActivities,
-          ];
-        } catch (err) {
-          console.log("Erro ao buscar matrículas:", err);
-        }
-
-        // Definir estatísticas com os dados disponíveis
+        // Atualizar estado com os dados recebidos
         setStats({
-          totalAlunos: alunosCount,
-          totalCursos: cursosCount,
-          totalPosts: postsCount,
-          crescimentoMensal: 12.5, // Valor de exemplo
+          totalAlunos: data.totalAlunos || 0,
+          totalCursos: data.totalCursos || 0,
+          totalPosts: data.totalPosts || 0,
+          crescimentoMensal: data.crescimentoMensal || 0,
         });
 
-        // Organizar atividades recentes por data (mais recentes primeiro)
-        recentActivitiesList.sort((a: RecentActivity, b: RecentActivity) => {
-          // Converte datas se necessário
-          const dateA =
-            a.date instanceof Date
-              ? a.date
-              : a.date && a.date.seconds
-              ? new Date(a.date.seconds * 1000)
-              : new Date(0);
-
-          const dateB =
-            b.date instanceof Date
-              ? b.date
-              : b.date && b.date.seconds
-              ? new Date(b.date.seconds * 1000)
-              : new Date(0);
-
-          // Ordena do mais recente para o mais antigo
-          return dateB.getTime() - dateA.getTime();
-        });
-        setRecentActivity(recentActivitiesList.slice(0, 10));
-
-        // Mostrar um log de sucesso
-        console.log(
-          `Dashboard carregado com sucesso: ${alunosCount} alunos, ${cursosCount} cursos, ${postsCount} posts, ${recentActivitiesList.length} atividades recentes`
+        // Converter datas das atividades recentes
+        const activities = (data.recentActivities || []).map(
+          (activity: any) => ({
+            ...activity,
+            date: new Date(activity.date),
+          })
         );
 
-        // Remover qualquer erro anterior
+        setRecentActivity(activities);
         setError(null);
-        setLoading(false);
-      } catch (error: unknown) {
-        console.error("Erro ao buscar dados:", error);
-        const errorMessage =
-          error instanceof Error ? error.message : "Erro ao carregar dados";
-        setError(errorMessage);
-        // Mostrar dados fictícios para evitar quebra da interface
-        setStats({
-          totalAlunos: 0,
-          totalCursos: 0,
-          totalPosts: 0,
-          crescimentoMensal: 0,
-        });
-        setRecentActivity([]);
+      } catch (err: unknown) {
+        const error = err as Error;
+        console.error("❌ Erro ao buscar dados:", error);
+        setError(error.message || "Erro ao carregar dados do painel");
+      } finally {
         setLoading(false);
       }
     };
@@ -228,13 +88,13 @@ export default function AdminPage() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        {" "}
         <h1 className="text-2xl font-bold text-white">Painel de Controle</h1>
         <div className="flex items-center bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
           <span className="h-2 w-2 bg-green-500 rounded-full mr-2"></span>
           Acesso completo
         </div>
       </div>
+
       {/* Stats Cards */}
       <AdminStats
         totalAlunos={stats.totalAlunos}
@@ -242,7 +102,8 @@ export default function AdminPage() {
         totalPosts={stats.totalPosts}
         crescimentoMensal={stats.crescimentoMensal}
         isLoading={loading}
-      />{" "}
+      />
+
       {/* Quick Links & Recent Activity */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
         {/* Quick Links */}
@@ -291,7 +152,8 @@ export default function AdminPage() {
               <span className="text-gray-700">Relatórios</span>
             </Link>
           </div>
-        </div>{" "}
+        </div>
+
         {/* Recent Activity */}
         <div className="lg:col-span-2 bg-white rounded-lg shadow-md p-6">
           <h2 className="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">
@@ -307,16 +169,13 @@ export default function AdminPage() {
               <div className="bg-red-100 text-red-700 p-4 rounded-lg flex items-center">
                 <FaExclamationTriangle className="text-xl mr-2" />
                 <div>
-                  <p className="font-medium">Erro de permissão</p>
-                  <p className="text-sm">
-                    Não foi possível carregar as atividades recentes
-                  </p>
+                  <p className="font-medium">Erro ao carregar dados</p>
+                  <p className="text-sm">{error}</p>
                 </div>
               </div>
             </div>
           ) : (
             <div className="space-y-4">
-              {" "}
               {recentActivity.length > 0 ? (
                 recentActivity.map((activity) => (
                   <div
@@ -346,18 +205,14 @@ export default function AdminPage() {
                               hour: "2-digit",
                               minute: "2-digit",
                             })
-                          : activity.date && activity.date.seconds
-                          ? new Date(
-                              activity.date.seconds * 1000
-                            ).toLocaleString("pt-BR", {
+                          : new Date(activity.date).toLocaleString("pt-BR", {
                               day: "2-digit",
                               month: "2-digit",
                               year: "numeric",
                               hour: "2-digit",
                               minute: "2-digit",
-                            })
-                          : "Data não disponível"}
-                      </span>{" "}
+                            })}
+                      </span>
                       <span
                         className={`text-xs px-2 py-1 rounded-full ${
                           activity.type === "matricula"

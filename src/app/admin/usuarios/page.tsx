@@ -1,21 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { db } from "@/lib/firebase";
-import {
-  collection,
-  doc,
-  getDocs,
-  query,
-  limit,
-  orderBy,
-  startAfter,
-  DocumentData,
-  QueryDocumentSnapshot,
-  Timestamp,
-  updateDoc,
-  deleteDoc,
-} from "firebase/firestore";
 import { FaUser, FaSearch } from "react-icons/fa";
 import Image from "next/image";
 import AlertBanner from "../components/AlertBanner";
@@ -25,8 +10,8 @@ interface User {
   displayName: string;
   email: string;
   photoURL?: string;
-  createdAt?: Timestamp;
-  lastLogin?: Timestamp;
+  createdAt?: Date | null;
+  lastLogin?: Date | null;
   isAdmin?: boolean;
   matriculas?: number;
   status?: "active" | "inactive" | "banned";
@@ -37,109 +22,107 @@ export default function AdminUsuarios() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [lastVisible, setLastVisible] =
-    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
-  const [hasMore, setHasMore] = useState(true);
-  // Buscar usuários
-  const fetchUsers = useCallback(
-    async (startAfterDoc?: QueryDocumentSnapshot<DocumentData>) => {
-      console.log("Iniciando busca de usuários como admin...");
-      setLoading(true);
+  const [lastVisible, setLastVisible] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true); // Buscar usuários
+  const fetchUsers = useCallback(async (startAfter?: string) => {
+    console.log("Iniciando busca de usuários via API...");
+    setLoading(true);
 
-      try {
-        let usersQuery;
-        if (startAfterDoc) {
-          usersQuery = query(
-            collection(db, "users"),
-            orderBy("email"),
-            startAfter(startAfterDoc),
-            limit(10)
-          );
-        } else {
-          usersQuery = query(
-            collection(db, "users"),
-            orderBy("email"),
-            limit(10)
-          );
-        }
+    try {
+      // Construir URL da API com parâmetros
+      const params = new URLSearchParams({
+        limit: "10",
+      });
 
-        const usersSnapshot = await getDocs(usersQuery);
-        console.log("Usuários encontrados:", usersSnapshot.size);
-        console.log(
-          "Docs retornados:",
-          usersSnapshot.docs.map((d) => d.id)
-        );
-        if (usersSnapshot.empty) {
-          setHasMore(false);
-          if (!startAfterDoc) {
-            setUsers([]);
-          }
-          // Log extra para depuração
-          console.warn(
-            "Nenhum usuário encontrado. Verifique as regras do Firestore e se há documentos na coleção 'users'."
-          );
-          return;
-        }
-
-        setLastVisible(usersSnapshot.docs[usersSnapshot.docs.length - 1]);
-
-        const usersList = usersSnapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            displayName: data.displayName || "Usuário sem nome",
-            email: data.email || "Sem e-mail",
-            photoURL: data.photoURL,
-            createdAt: data.createdAt,
-            lastLogin: data.lastLogin,
-            status: data.status || "active",
-            matriculas: data.matriculas || 0,
-          };
-        });
-
-        if (startAfterDoc) {
-          setUsers((prev) => [...prev, ...usersList]);
-        } else {
-          setUsers(usersList);
-        }
-
-        setError(null);
-        console.log(
-          "Lista de usuários atualizada:",
-          usersList.length,
-          "usuários",
-          usersList
-        );
-      } catch (err: unknown) {
-        const error = err as Error;
-        console.error("Erro ao buscar usuários:", error);
-        setError(
-          "Erro ao carregar usuários: " +
-            error.message +
-            (error.message?.includes("permission-denied")
-              ? " (Verifique as regras do Firestore e permissões do usuário autenticado)"
-              : "")
-        );
-      } finally {
-        setLoading(false);
+      if (startAfter) {
+        params.append("startAfter", startAfter);
       }
-    },
-    []
-  );
+
+      if (searchTerm) {
+        params.append("search", searchTerm);
+      }
+
+      const response = await fetch(`/api/admin/users?${params.toString()}`, {
+        credentials: "include", // Incluir cookies de sessão
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("Sessão expirada. Faça login novamente.");
+        } else if (response.status === 403) {
+          throw new Error("Acesso negado. Permissões insuficientes.");
+        } else {
+          throw new Error(`Erro ${response.status}: ${response.statusText}`);
+        }
+      }
+
+      const data = await response.json();
+      console.log("Usuários encontrados:", data.users.length);
+
+      if (!data.users || data.users.length === 0) {
+        setHasMore(false);
+        if (!startAfter) {
+          setUsers([]);
+        }
+        console.warn("Nenhum usuário encontrado.");
+        return;
+      }
+
+      setLastVisible(data.lastVisible);
+      setHasMore(data.hasMore);
+
+      // Converter datas de string para Timestamp para compatibilidade
+      const usersList = data.users.map((user: any) => ({
+        ...user,
+        createdAt: user.createdAt ? new Date(user.createdAt) : null,
+        lastLogin: user.lastLogin ? new Date(user.lastLogin) : null,
+      }));
+
+      if (startAfter) {
+        setUsers((prev) => [...prev, ...usersList]);
+      } else {
+        setUsers(usersList);
+      }
+
+      setError(null);
+      console.log(
+        "Lista de usuários atualizada:",
+        usersList.length,
+        "usuários"
+      );
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.error("Erro ao buscar usuários:", error);
+      setError(error.message || "Erro ao carregar usuários");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
   // Buscar usuários na inicialização
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
-  // Atualizar status do usuário
+  }, [fetchUsers]); // Atualizar status do usuário
   const updateUserStatus = async (
     userId: string,
     status: "active" | "inactive" | "banned"
   ) => {
     try {
-      await updateDoc(doc(db, "users", userId), {
-        status: status,
-        updatedAt: new Date(),
+      const response = await fetch("/api/admin/users", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          userId,
+          updates: { status, updatedAt: new Date() },
+        }),
       });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Erro ao atualizar status");
+      }
 
       setUsers(
         users.map((u) => (u.id === userId ? { ...u, status: status } : u))
@@ -151,15 +134,23 @@ export default function AdminUsuarios() {
       console.error("Erro ao atualizar status:", error);
       setError("Erro ao atualizar status: " + error.message);
     }
-  };
-  // Excluir usuário
+  }; // Excluir usuário
   const handleDelete = async (userId: string, userName: string) => {
     if (!confirm(`Tem certeza que deseja excluir o usuário ${userName}?`)) {
       return;
     }
 
     try {
-      await deleteDoc(doc(db, "users", userId));
+      const response = await fetch(`/api/admin/users?userId=${userId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Erro ao excluir usuário");
+      }
+
       setUsers(users.filter((u) => u.id !== userId));
       setError(null);
     } catch (err: unknown) {
