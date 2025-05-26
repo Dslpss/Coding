@@ -1,13 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FaUser, FaLock, FaEye, FaEyeSlash, FaShieldAlt } from "react-icons/fa";
-
-// Importação dinâmica da função para evitar erros SSR
-const loginAdminFunction = async (email: string, password: string) => {
-  const { loginAdmin } = await import("@/app/admin/utils/adminAuth");
-  return loginAdmin(email, password);
-};
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
@@ -16,6 +10,18 @@ export default function AdminLoginPage() {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    // Verificar se há erro na URL
+    const params = new URLSearchParams(window.location.search);
+    const urlError = params.get("error");
+    if (urlError) {
+      setError(decodeURIComponent(urlError));
+
+      // Limpar erro da URL sem recarregar a página
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,30 +35,38 @@ export default function AdminLoginPage() {
     setError("");
 
     try {
-      await loginAdmin(email, password);
+      const response = await fetch("/api/admin/auth", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+        credentials: "include", // importante para cookies
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        let errorMessage = data.error || "Erro na autenticação";
+
+        // Adicionar informação de tentativas restantes
+        if (data.remainingAttempts !== undefined) {
+          errorMessage += ` (${data.remainingAttempts} tentativas restantes)`;
+        }
+
+        // Informação de tempo de espera para rate limit
+        if (data.timeToReset) {
+          errorMessage += `\nTente novamente em ${data.timeToReset}.`;
+        }
+
+        throw new Error(errorMessage);
+      }
 
       // Redirecionar para o painel admin
       router.push("/admin");
     } catch (error: unknown) {
       console.error("Erro no login admin:", error);
-
-      const firebaseError = error as { message?: string; code?: string };
-
-      if (firebaseError.message?.includes("não é administrador")) {
-        setError("Acesso negado. Você não tem permissões de administrador.");
-      } else if (firebaseError.code === "auth/user-not-found") {
-        setError("Usuário não encontrado.");
-      } else if (firebaseError.code === "auth/wrong-password") {
-        setError("Senha incorreta.");
-      } else if (firebaseError.code === "auth/invalid-email") {
-        setError("Email inválido.");
-      } else if (firebaseError.code === "auth/too-many-requests") {
-        setError("Muitas tentativas de login. Tente novamente mais tarde.");
-      } else {
-        setError(
-          "Erro ao fazer login. Verifique suas credenciais e tente novamente."
-        );
-      }
+      setError(error instanceof Error ? error.message : "Erro ao fazer login");
     } finally {
       setLoading(false);
     }
