@@ -61,11 +61,10 @@ export const initAdmin = () => {
           clientEmail:
             serviceAccount.client_email || serviceAccount.clientEmail,
           privateKey: serviceAccount.private_key || serviceAccount.privateKey,
-        };
-
-        // Inicializar Firebase Admin
+        }; // Inicializar Firebase Admin
         firebaseAdmin = initializeApp({
           credential: cert(credentials),
+          storageBucket: "barbearia-bd25e.appspot.com", // Adicionar o storage bucket
         });
 
         console.log("✅ Firebase Admin inicializado com sucesso!");

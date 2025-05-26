@@ -34,20 +34,26 @@ function BlogPost({ id }: { id: string }) {
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
     const fetchPost = async () => {
+      console.log("🔍 Tentando buscar post com ID:", id);
       try {
         const postRef = doc(db, "blog", id);
+        console.log("📄 Referência do documento criada");
+
         const postSnap = await getDoc(postRef);
+        console.log("📥 Snapshot obtido, existe?", postSnap.exists());
 
         if (!postSnap.exists()) {
+          console.error("❌ Post não encontrado no Firestore");
           setError("Post não encontrado");
           setLoading(false);
           return;
         }
 
         const postData = postSnap.data();
+        console.log("📋 Dados do post:", postData);
+
         const post: Post = {
           id: postSnap.id,
           title: postData.title || "Sem título",
@@ -63,13 +69,21 @@ function BlogPost({ id }: { id: string }) {
             ? postData.createdAt.toDate()
             : new Date(),
         };
-
         setPost(post);
 
         // Incrementa o contador de visualizações
-        await updateDoc(postRef, {
-          views: increment(1),
-        });
+        try {
+          await updateDoc(postRef, {
+            views: increment(1),
+          });
+          console.log("✅ Views incrementadas com sucesso");
+        } catch (viewError) {
+          console.warn(
+            "⚠️ Erro ao incrementar views (não crítico):",
+            viewError
+          );
+          // Continua sem interromper o carregamento da página
+        }
       } catch (error) {
         console.error("Erro ao buscar post:", error);
         setError("Erro ao carregar o post");

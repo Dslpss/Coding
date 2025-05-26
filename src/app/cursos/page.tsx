@@ -18,10 +18,12 @@ import {
 interface Curso {
   id: string;
   titulo?: string;
+  nome?: string;
   descricao?: string;
   nivel?: string;
   duracao?: string;
   aulas?: number;
+  preco?: number;
   imagemUrl?: string;
   tags?: string[];
   createdAt?: Date | null;
@@ -42,36 +44,40 @@ export default function CursosPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Buscar cursos
-        const q = query(collection(db, "cursos"), orderBy("createdAt", "desc"));
-        const snap = await getDocs(q);
+        console.log("🔍 Buscando cursos via API...");
 
-        const cursosData = snap.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            titulo: data.titulo ?? `Curso #${doc.id}`,
-            descricao: data.descricao ?? "Descrição não disponível",
-            nivel: data.nivel ?? "Iniciante",
-            duracao: data.duracao ?? "4 semanas",
-            aulas: data.aulas ?? 12,
-            imagemUrl: data.imagemUrl ?? null,
-            tags: data.tags ?? ["Programação"],
-            createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : null,
-          };
-        });
+        // Buscar cursos via API
+        const response = await fetch("/api/cursos");
+
+        if (!response.ok) {
+          throw new Error(`Erro ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log("✅ Cursos encontrados:", data.cursos.length);
+
+        // Converter datas de string para objetos Date
+        const cursosData = data.cursos.map((curso: any) => ({
+          ...curso,
+          createdAt: curso.createdAt ? new Date(curso.createdAt) : null,
+          tags: curso.tags || ["Programação"],
+        }));
 
         setCursos(cursosData);
 
-        // Calcular estatísticas
+        // Calcular estatísticas baseadas em dados reais
         setStats({
           totalCursos: cursosData.length,
-          totalAlunos: cursosData.length * 25, // Simulado
+          totalAlunos: cursosData.length * 25, // Simulado - pode ser calculado de matrículas reais
           horasConteudo:
-            cursosData.reduce((acc, curso) => acc + (curso.aulas || 0), 0) * 2, // 2h por aula
+            cursosData.reduce(
+              (acc: number, curso: Curso) => acc + (curso.aulas || 0),
+              0
+            ) * 2, // 2h por aula
         });
       } catch (error) {
-        console.error("Erro ao buscar dados:", error);
+        console.error("❌ Erro ao buscar dados:", error);
+        setMsg("Erro ao carregar cursos. Tente novamente.");
       } finally {
         setLoading(false);
       }

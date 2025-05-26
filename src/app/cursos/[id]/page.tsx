@@ -18,6 +18,14 @@ interface Curso {
   nome?: string;
   titulo?: string;
   descricao?: string;
+  nivel?: string;
+  preco?: number;
+  imagemUrl?: string;
+  aulas?: number;
+  duracao?: string;
+  totalCapitulos?: number;
+  totalVideos?: number;
+  capitulos?: Capitulo[];
 }
 interface Video {
   id: string;

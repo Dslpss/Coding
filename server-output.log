@@ -1,0 +1,74 @@
+
+> self-coding@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.3.2
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.100.195:3000
+   - Environments: .env.local, .env
+
+ ✓ Starting...
+ ✓ Ready in 8.1s
+ ○ Compiling /api/admin/auth ...
+ ✓ Compiled /api/admin/auth in 8.8s (417 modules)
+📁 Carregando credenciais do arquivo service-account.json.json
+✅ Firebase Admin inicializado com sucesso!
+📋 Projeto: barbearia-bd25e
+=== ENDPOINT CHAMADO ===
+IP do cliente: ::1
+=== INÍCIO DA AUTENTICAÇÃO ===
+Email recebido: dennisemannuel93@gmail.com
+IP do cliente: ::1
+🔍 Verificando usuário no Firebase Auth...
+✅ Usuário encontrado no Firebase Auth: eF1h16ChDuOZ6pNtbGmk9A7jm152
+🔍 Buscando documento admin: dennisemannuel93_gmail_com
+✅ Documento admin encontrado: { active: true, role: 'super_admin' }
+Tentando autenticar com Firebase API Key: AIzaSyATDE21wBLKPqLc...
+Firebase Auth Response Status: 200
+Authentication successful for: dennisemannuel93@gmail.com
+Erro na autenticação: Error: The provided ID token is not a valid Firebase ID token.
+    at async POST (src\app\api\admin\auth\route.ts:137:26)
+  135 |
+  136 |       // Criar um token JWT para sessão admin
+> 137 |       const accessToken = await auth.createSessionCookie(customToken, {
+      |                          ^
+  138 |         expiresIn: ACCESS_TOKEN_EXPIRY * 1000, // Converter para milissegundos
+  139 |       });
+  140 | {
+  errorInfo: [Object],
+  codePrefix: 'auth'
+}
+ POST /api/admin/auth 401 in 15284ms
+=== ENDPOINT CHAMADO ===
+IP do cliente: ::1
+=== INÍCIO DA AUTENTICAÇÃO ===
+Email recebido: dennisemannuel93@gmail.com
+IP do cliente: ::1
+🔍 Verificando usuário no Firebase Auth...
+✅ Usuário encontrado no Firebase Auth: eF1h16ChDuOZ6pNtbGmk9A7jm152
+🔍 Buscando documento admin: dennisemannuel93_gmail_com
+✅ Documento admin encontrado: { active: true, role: 'super_admin' }
+Tentando autenticar com Firebase API Key: AIzaSyATDE21wBLKPqLc...
+Firebase Auth Response Status: 200
+Authentication successful for: dennisemannuel93@gmail.com
+Erro na autenticação: Error: The provided ID token is not a valid Firebase ID token.
+    at async POST (src\app\api\admin\auth\route.ts:137:26)
+  135 |
+  136 |       // Criar um token JWT para sessão admin
+> 137 |       const accessToken = await auth.createSessionCookie(customToken, {
+      |                          ^
+  138 |         expiresIn: ACCESS_TOKEN_EXPIRY * 1000, // Converter para milissegundos
+  139 |       });
+  140 | {
+  errorInfo: [Object],
+  codePrefix: 'auth'
+}
+ POST /api/admin/auth 401 in 1366ms
+ ○ Compiling / ...
+ ✓ Compiled / in 8.7s (766 modules)
+ GET / 200 in 9815ms
+ ✓ Compiled in 2.6s (316 modules)
+ ✓ Compiled in 1464ms (316 modules)
+ ✓ Compiled in 1365ms (316 modules)
+ ✓ Compiled in 1201ms (316 modules)
+ ✓ Compiled in 1679ms (316 modules)

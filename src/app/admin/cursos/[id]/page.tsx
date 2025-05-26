@@ -114,131 +114,152 @@ export default function CursoPersonalizarPage({
     };
     fetchCurso();
   }, [cursoId]);
+  // Função para buscar capítulos via API
+  async function fetchCapitulos() {
+    if (!cursoId) return;
+    setCapLoading(true);
+    setCapError("");
+    try {
+      console.log("🔍 Buscando capítulos via API...");
+      const response = await fetch(`/api/admin/courses/${cursoId}/chapters`, {
+        credentials: "include",
+      });
+      if (!response.ok)
+        throw new Error(`Erro ${response.status}: ${response.statusText}`);
+      const data = await response.json();
+      const capitulosComDatas = data.chapters.map((cap: any) => ({
+        ...cap,
+        createdAt: cap.createdAt ? new Date(cap.createdAt) : null,
+        videos: cap.videos.map((video: any) => ({
+          ...video,
+          createdAt: video.createdAt ? new Date(video.createdAt) : null,
+        })),
+      }));
+      setCapitulos(capitulosComDatas);
+      setCapError("");
+    } catch (err: any) {
+      console.error("❌ Erro ao buscar capítulos:", err);
+      setCapError("Erro ao buscar capítulos: " + err.message);
+    } finally {
+      setCapLoading(false);
+    }
+  }
 
-  // Buscar capítulos
   useEffect(() => {
     if (!cursoId) return;
-    const fetchCapitulos = async () => {
-      setCapLoading(true);
-      try {
-        const q = query(
-          collection(db, "cursos", cursoId, "chapters"),
-          orderBy("createdAt", "asc")
-        );
-        const snap = await getDocs(q);
-        // Para cada capítulo, buscar vídeos
-        const capitulosComVideos = await Promise.all(
-          snap.docs.map(async (docCap) => {
-            const data = docCap.data();
-            const videosSnap = await getDocs(
-              collection(db, "cursos", cursoId, "chapters", docCap.id, "videos")
-            );
-
-            // Criar array de vídeos combinando subcoleção e vídeo do capítulo
-            const videosSubcolecao = videosSnap.docs.map(
-              (v) =>
-                ({
-                  id: v.id,
-                  ...v.data(),
-                } as Video)
-            );
-
-            const videos: Video[] =
-              data.videoUrl && data.videoTitulo
-                ? [
-                    {
-                      id: "legacy",
-                      titulo: data.videoTitulo,
-                      url: data.videoUrl,
-                    },
-                    ...videosSubcolecao,
-                  ]
-                : videosSubcolecao;
-
-            return {
-              id: docCap.id,
-              nome: data.nome,
-              videoUrl: data.videoUrl,
-              videoTitulo: data.videoTitulo,
-              createdAt: data.createdAt,
-              videos,
-            };
-          })
-        );
-        setCapitulos(capitulosComVideos);
-      } catch {
-        setCapError("Erro ao buscar capítulos.");
-      }
-      setCapLoading(false);
-    };
     fetchCapitulos();
-  }, [cursoId, capSuccess]);
-
+  }, [cursoId]);
+  // Adicionar capítulo via API
   async function handleAddCapitulo(e: React.FormEvent) {
     e.preventDefault();
     setCapError("");
     setCapSuccess("");
+
     if (!nomeCap.trim() || !videoCap.trim() || !novoTituloVideo.trim()) {
       setCapError(
         "Preencha o nome do capítulo, o título do vídeo e o link do vídeo."
       );
       return;
     }
+
     setCapLoading(true);
+
     try {
-      await addDoc(collection(db, "cursos", cursoId!, "chapters"), {
-        nome: nomeCap.trim(),
-        videoUrl: videoCap.trim(),
-        videoTitulo: novoTituloVideo.trim(),
-        createdAt: serverTimestamp(),
+      console.log("📝 Criando capítulo via API...");
+
+      const response = await fetch(`/api/admin/courses/${cursoId}/chapters`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          nome: nomeCap.trim(),
+          videoTitulo: novoTituloVideo.trim(),
+          videoUrl: videoCap.trim(),
+        }),
       });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Erro ao criar capítulo");
+      }
+
+      const data = await response.json();
+      console.log("✅ Capítulo criado:", data.chapter);
+
+      // Limpar formulário
       setNomeCap("");
       setVideoCap("");
       setNovoTituloVideo("");
-      setCapSuccess("Capítulo adicionado!");
-    } catch {
-      setCapError("Erro ao adicionar capítulo.");
-    }
-    setCapLoading(false);
-  }
 
-  // Adicionar vídeo em subcoleção 'videos' de cada capítulo
+      setCapSuccess("Capítulo adicionado!");
+      await fetchCapitulos();
+      setTimeout(() => setCapSuccess(""), 3000);
+    } catch (err: any) {
+      console.error("❌ Erro ao adicionar capítulo:", err);
+      setCapError("Erro ao adicionar capítulo: " + err.message);
+    } finally {
+      setCapLoading(false);
+    }
+  }
+  // Adicionar vídeo via API
   async function handleAddVideoToCapitulo(e: React.FormEvent) {
     e.preventDefault();
     setVideoMsg("");
+
     if (!capSelecionado || !novoVideo.trim() || !novoTituloVideo.trim()) {
       setVideoMsg("Selecione um capítulo, insira o título e o link do vídeo.");
       return;
     }
+
     setCapLoading(true);
+
     try {
-      await addDoc(
-        collection(
-          db,
-          "cursos",
-          cursoId!,
-          "chapters",
-          capSelecionado,
-          "videos"
-        ),
+      console.log("📹 Adicionando vídeo via API...");
+
+      const response = await fetch(
+        `/api/admin/courses/${cursoId}/chapters/${capSelecionado}/videos`,
         {
-          titulo: novoTituloVideo.trim(),
-          url: novoVideo.trim(),
-          createdAt: serverTimestamp(),
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            titulo: novoTituloVideo.trim(),
+            url: novoVideo.trim(),
+          }),
         }
       );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Erro ao adicionar vídeo");
+      }
+
+      const data = await response.json();
+      console.log("✅ Vídeo adicionado:", data.video);
+
+      // Limpar formulário
       setNovoVideo("");
       setNovoTituloVideo("");
       setCapSelecionado("");
-      setVideoMsg("Vídeo adicionado ao capítulo!");
-      setCapSuccess(""); // força refresh dos capítulos
-    } catch {
-      setVideoMsg("Erro ao adicionar vídeo ao capítulo.");
-    }
-    setCapLoading(false);
-  }
 
-  // Função para apagar o curso
+      setVideoMsg("Vídeo adicionado ao capítulo!");
+
+      // Forçar atualização da lista
+      setCapSuccess(""); // força refresh dos capítulos
+
+      setTimeout(() => setVideoMsg(""), 3000);
+    } catch (err: any) {
+      console.error("❌ Erro ao adicionar vídeo:", err);
+      setVideoMsg("Erro ao adicionar vídeo: " + err.message);
+    } finally {
+      setCapLoading(false);
+    }
+  }
+  // Função para apagar o curso via API
   async function handleDeleteCurso() {
     if (!cursoId) return;
     if (
@@ -247,20 +268,33 @@ export default function CursoPersonalizarPage({
       )
     )
       return;
+
     setLoading(true);
     setError("");
+
     try {
-      await deleteDoc(doc(db, "cursos", cursoId));
+      console.log("🗑️ Apagando curso via API...");
+
+      const response = await fetch(`/api/admin/courses?courseId=${cursoId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Erro ao apagar curso");
+      }
+
       setLoading(false);
       alert("Curso apagado com sucesso!");
       router.push("/admin/cursos");
-    } catch {
-      setError("Erro ao apagar curso.");
+    } catch (err: any) {
+      console.error("❌ Erro ao apagar curso:", err);
+      setError("Erro ao apagar curso: " + err.message);
       setLoading(false);
     }
   }
-
-  // Função para editar capítulo (nome, título do vídeo, link)
+  // Função para editar capítulo via API
   async function handleEditarCapitulo(
     capId: string,
     novoNome: string,
@@ -269,45 +303,107 @@ export default function CursoPersonalizarPage({
   ) {
     setCapLoading(true);
     setCapError("");
+
     try {
-      // Atualiza o nome do capítulo
-      const capRef = doc(db, "cursos", cursoId!, "chapters", capId);
-      await updateDoc(capRef, {
-        nome: novoNome,
+      console.log("📝 Editando capítulo via API...");
+
+      const response = await fetch(`/api/admin/courses/${cursoId}/chapters`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          chapterId: capId,
+          nome: novoNome,
+          videoTitulo: novoTitulo,
+          videoUrl: novoLink,
+        }),
       });
 
-      // Adiciona o vídeo na subcoleção videos
-      if (novoTitulo && novoLink) {
-        await addDoc(
-          collection(db, "cursos", cursoId!, "chapters", capId, "videos"),
-          {
-            titulo: novoTitulo.trim(),
-            url: novoLink.trim(),
-            createdAt: serverTimestamp(),
-          }
-        );
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Erro ao editar capítulo");
       }
 
+      console.log("✅ Capítulo editado com sucesso");
       setCapSuccess("Capítulo atualizado!");
-    } catch {
-      setCapError("Erro ao editar capítulo.");
+      await fetchCapitulos();
+      setTimeout(() => setCapSuccess(""), 3000);
+    } catch (err: any) {
+      console.error("❌ Erro ao editar capítulo:", err);
+      setCapError("Erro ao editar capítulo: " + err.message);
+    } finally {
+      setCapLoading(false);
     }
-    setCapLoading(false);
   }
-
-  // Função para apagar capítulo
+  // Função para apagar capítulo via API
   async function handleApagarCapitulo(capId: string) {
     if (!confirm("Tem certeza que deseja apagar este capítulo?")) return;
     setCapLoading(true);
     setCapError("");
+
     try {
-      await deleteDoc(doc(db, "cursos", cursoId!, "chapters", capId));
+      console.log("🗑️ Apagando capítulo via API...");
+
+      const response = await fetch(
+        `/api/admin/courses/${cursoId}/chapters?courseId=${cursoId}&chapterId=${capId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Erro ao apagar capítulo");
+      }
+
+      console.log("✅ Capítulo apagado com sucesso");
       setCapSuccess("Capítulo apagado!");
-    } catch {
-      setCapError("Erro ao apagar capítulo.");
+      await fetchCapitulos();
+      setTimeout(() => setCapSuccess(""), 3000);
+    } catch (err: any) {
+      console.error("❌ Erro ao apagar capítulo:", err);
+      setCapError("Erro ao apagar capítulo: " + err.message);
+    } finally {
+      setCapLoading(false);
     }
-    setCapLoading(false);
   }
+
+  // Função para apagar vídeo via API
+  async function handleApagarVideo(capId: string, videoId: string) {
+    setCapLoading(true);
+    setCapError("");
+
+    try {
+      console.log("🗑️ Apagando vídeo via API...");
+
+      const response = await fetch(
+        `/api/admin/courses/${cursoId}/chapters/${capId}/videos?courseId=${cursoId}&chapterId=${capId}&videoId=${videoId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Erro ao apagar vídeo");
+      }
+
+      console.log("✅ Vídeo apagado com sucesso");
+      setCapSuccess("Vídeo apagado!");
+      await fetchCapitulos();
+      setTimeout(() => setCapSuccess(""), 3000);
+    } catch (err: any) {
+      console.error("❌ Erro ao apagar vídeo:", err);
+      setCapError("Erro ao apagar vídeo: " + err.message);
+    } finally {
+      setCapLoading(false);
+    }
+  }
+
   // Admin authentication is handled by the layout, no need for additional checks here
   if (loading || !cursoId) return <div className="p-8">Carregando...</div>;
   if (error) return <AlertBanner type="error" message={error} />;
@@ -461,23 +557,12 @@ export default function CursoPersonalizarPage({
                             className="underline text-blue-700 hover:text-blue-900"
                           >
                             [Assistir]
-                          </a>
+                          </a>{" "}
                           <button
                             className="text-xs text-red-600 hover:underline ml-2"
                             onClick={async () => {
                               if (confirm("Apagar este vídeo?")) {
-                                await deleteDoc(
-                                  doc(
-                                    db,
-                                    "cursos",
-                                    cursoId!,
-                                    "chapters",
-                                    cap.id,
-                                    "videos",
-                                    video.id
-                                  )
-                                );
-                                setCapSuccess("Vídeo apagado!");
+                                await handleApagarVideo(cap.id, video.id);
                               }
                             }}
                           >

@@ -31,15 +31,19 @@ service cloud.firestore {
       allow write: if request.auth != null && 
                   isAdminAndActive() && 
                   hasAdminPermission('manage_courses');
-    }
-
-    // Regras para coleção de blog
+    }    // Regras para coleção de blog
     match /blog/{docId} {
       allow read: if true; // leitura pública
-      allow write: if request.auth != null && 
-                  isAdminAndActive() && 
-                  hasAdminPermission('manage_blog');
-    }    // Regras para a coleção de usuários
+      allow create, delete: if request.auth != null && 
+                           isAdminAndActive() && 
+                           hasAdminPermission('manage_blog');
+      allow update: if (request.auth != null && 
+                       isAdminAndActive() && 
+                       hasAdminPermission('manage_blog')) ||
+                      // Permitir incremento de views sem autenticação
+                      (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views']) &&
+                       request.resource.data.views > resource.data.views);
+    }// Regras para a coleção de usuários
     match /users/{userId} {
       allow read: if request.auth != null && 
                  (request.auth.uid == userId || isAdminAndActive());

@@ -1,25 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
-import {
-  collection,
-  getDocs,
-  addDoc,
-  deleteDoc,
-  doc,
-  serverTimestamp,
-  query,
-  where,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import {
-  FaPlus,
-  FaEdit,
-  FaTrash,
-  FaBook,
-  FaSpinner,
-  FaUsers,
-} from "react-icons/fa";
+import { FaPlus, FaTrash, FaBook, FaSpinner, FaUsers } from "react-icons/fa";
+import Image from "next/image";
 import AlertBanner from "../components/AlertBanner";
+import ImageUpload from "../components/ImageUpload";
 import { formatTimestamp } from "../utils/adminUtils";
 
 interface Curso {
@@ -30,7 +14,7 @@ interface Curso {
   nivel?: string;
   preco?: number;
   imagemUrl?: string;
-  createdAt?: any;
+  createdAt?: Date | null;
   totalMatriculas?: number;
 }
 
@@ -40,130 +24,146 @@ export default function AdminCursosPage() {
   const [descricao, setDescricao] = useState("");
   const [nivel, setNivel] = useState("");
   const [preco, setPreco] = useState("");
+  const [imagemUrl, setImagemUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  // Função para buscar cursos via API
   async function fetchCursos() {
     setLoading(true);
     setError("");
     try {
-      const cursosSnapshot = await getDocs(collection(db, "cursos"));
+      console.log("🔍 Buscando cursos via API...");
 
-      // Buscar matrículas para contagem
-      const matriculasSnapshot = await getDocs(collection(db, "matriculas"));
-      const matriculasPorCurso: { [key: string]: number } = {};
+      const response = await fetch("/api/admin/courses", {
+        credentials: "include",
+      });
 
-      // Contar matrículas por curso
-      matriculasSnapshot.docs.forEach((doc) => {
-        const data = doc.data();
-        const cursoId = data.cursoId;
-
-        if (cursoId) {
-          matriculasPorCurso[cursoId] = (matriculasPorCurso[cursoId] || 0) + 1;
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("Sessão expirada. Faça login novamente.");
+        } else if (response.status === 403) {
+          throw new Error("Acesso negado. Permissões insuficientes.");
+        } else {
+          throw new Error(`Erro ${response.status}: ${response.statusText}`);
         }
-      });
+      }
 
-      const cursosList = cursosSnapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          nome: data.nome || data.titulo || "Curso sem nome",
-          titulo: data.titulo || data.nome,
-          descricao: data.descricao || "",
-          nivel: data.nivel,
-          preco: data.preco,
-          imagemUrl: data.imagemUrl,
-          createdAt: data.createdAt,
-          totalMatriculas: matriculasPorCurso[doc.id] || 0,
-        } as Curso;
-      });
+      const data = await response.json();
+      console.log("✅ Cursos encontrados:", data.courses.length); // Converter datas de string para objetos Date se necessário
+      const cursosComDatas = data.courses.map((curso: Curso) => ({
+        ...curso,
+        createdAt: curso.createdAt ? new Date(curso.createdAt) : null,
+      }));
 
-      // Ordenar cursos por data de criação (mais recente primeiro)
-      cursosList.sort((a, b) => {
-        if (a.createdAt?.seconds && b.createdAt?.seconds) {
-          return b.createdAt.seconds - a.createdAt.seconds;
-        }
-        return a.nome.localeCompare(b.nome);
-      });
-
-      setCursos(cursosList);
-    } catch (err) {
-      console.error("Erro ao buscar cursos:", err);
-      setError("Erro ao buscar cursos. Verifique as permissões do Firestore.");
-      setCursos([]);
+      setCursos(cursosComDatas);
+      setError("");
+    } catch (err: unknown) {
+      console.error("❌ Erro ao buscar cursos:", err);
+      setError(
+        "Erro ao buscar cursos: " +
+          (err instanceof Error ? err.message : "Erro desconhecido")
+      );
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
-
   useEffect(() => {
-    // Buscar cursos na inicialização
     fetchCursos();
   }, []);
+
+  // Função para adicionar curso via API
   async function handleAddCurso(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
-    setSuccess("");
 
     if (!nome.trim() || !descricao.trim()) {
-      setError("Preencha pelo menos o nome e a descrição do curso");
+      setError("Nome e descrição são obrigatórios");
       return;
     }
 
     setLoading(true);
+    setError("");
+    setSuccess("");
+
     try {
-      const cursoData: Record<string, any> = {
-        nome: nome.trim(),
-        titulo: nome.trim(), // Compatibilidade com versões antigas
-        descricao: descricao.trim(),
-        createdAt: serverTimestamp(),
-      };
+      const response = await fetch("/api/admin/courses", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          nome: nome.trim(),
+          descricao: descricao.trim(),
+          nivel: nivel || "Iniciante",
+          preco: preco ? parseFloat(preco) : 0,
+          imagemUrl: imagemUrl,
+        }),
+      });
 
-      if (nivel) cursoData.nivel = nivel;
-      if (preco) cursoData.preco = parseFloat(preco);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Erro ao criar curso");
+      }
 
-      await addDoc(collection(db, "cursos"), cursoData);
+      const data = await response.json();
 
-      // Limpar campos
+      // Adicionar o novo curso à lista
+      setCursos((prev) => [data.course, ...prev]); // Limpar formulário
       setNome("");
       setDescricao("");
       setNivel("");
       setPreco("");
+      setImagemUrl(null);
 
-      setSuccess("Curso criado com sucesso!");
-
-      // Atualizar lista
-      fetchCursos();
-    } catch (err) {
+      setSuccess("Curso adicionado com sucesso!");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err: unknown) {
       console.error("Erro ao adicionar curso:", err);
       setError(
-        "Erro ao adicionar curso. Verifique se você tem permissões suficientes."
+        "Erro ao adicionar curso: " +
+          (err instanceof Error ? err.message : "Erro desconhecido")
       );
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
-  async function handleDelete(id: string) {
-    if (
-      !confirm(
-        "Tem certeza que deseja remover este curso? Esta ação não pode ser desfeita."
-      )
-    )
+
+  // Função para excluir curso via API
+  async function handleDelete(id: string, nome: string) {
+    if (!confirm(`Tem certeza que deseja excluir o curso "${nome}"?`)) {
       return;
+    }
 
     setLoading(true);
     setError("");
     setSuccess("");
 
     try {
-      await deleteDoc(doc(db, "cursos", id));
-      setSuccess("Curso removido com sucesso!");
-      fetchCursos();
-    } catch (err) {
-      console.error("Erro ao remover curso:", err);
+      const response = await fetch(`/api/admin/courses?courseId=${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Erro ao excluir curso");
+      }
+
+      // Remover curso da lista
+      setCursos((prev) => prev.filter((curso) => curso.id !== id));
+      setSuccess("Curso excluído com sucesso!");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err: unknown) {
+      console.error("Erro ao excluir curso:", err);
       setError(
-        "Erro ao remover curso. Verifique se você tem permissões suficientes."
+        "Erro ao excluir curso: " +
+          (err instanceof Error ? err.message : "Erro desconhecido")
       );
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
   return (
     <div className="w-full">
@@ -210,7 +210,6 @@ export default function AdminCursosPage() {
                 required
               />
             </div>
-
             <div>
               <label
                 htmlFor="descricao"
@@ -228,7 +227,6 @@ export default function AdminCursosPage() {
                 required
               />
             </div>
-
             <div>
               <label
                 htmlFor="nivel"
@@ -247,8 +245,7 @@ export default function AdminCursosPage() {
                 <option value="Intermediário">Intermediário</option>
                 <option value="Avançado">Avançado</option>
               </select>
-            </div>
-
+            </div>{" "}
             <div>
               <label
                 htmlFor="preco"
@@ -270,7 +267,12 @@ export default function AdminCursosPage() {
                 Deixe vazio para curso gratuito
               </p>
             </div>
-
+            <ImageUpload
+              onImageChange={setImagemUrl}
+              currentImage={imagemUrl}
+              folder="courses"
+              disabled={loading}
+            />
             <button
               type="submit"
               className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center"
@@ -315,6 +317,7 @@ export default function AdminCursosPage() {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
+                        {" "}
                         <th
                           scope="col"
                           className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -356,19 +359,36 @@ export default function AdminCursosPage() {
                               window.location.href = `/admin/cursos/${curso.id}`;
                           }}
                         >
+                          {" "}
                           <td className="px-6 py-4">
-                            <div>
-                              <div className="text-sm font-medium text-blue-700 hover:underline">
-                                {curso.nome}
-                              </div>
-                              <div className="text-sm text-blue-400 max-w-xs truncate">
-                                {curso.descricao}
-                              </div>
-                              {curso.createdAt && (
-                                <div className="text-xs text-blue-200">
-                                  Criado em {formatTimestamp(curso.createdAt)}
+                            <div className="flex items-center space-x-4">
+                              {" "}
+                              {curso.imagemUrl && (
+                                <div className="flex-shrink-0">
+                                  <div className="w-16 h-16 relative rounded-lg overflow-hidden border border-gray-200">
+                                    <Image
+                                      src={curso.imagemUrl}
+                                      alt={curso.nome}
+                                      fill
+                                      className="object-cover"
+                                      unoptimized={true}
+                                    />
+                                  </div>
                                 </div>
                               )}
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium text-blue-700 hover:underline truncate">
+                                  {curso.nome}
+                                </div>
+                                <div className="text-sm text-blue-400 max-w-xs truncate">
+                                  {curso.descricao}
+                                </div>
+                                {curso.createdAt && (
+                                  <div className="text-xs text-blue-200">
+                                    Criado em {formatTimestamp(curso.createdAt)}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -406,7 +426,10 @@ export default function AdminCursosPage() {
                             <div className="flex justify-end gap-2">
                               {" "}
                               <button
-                                onClick={() => handleDelete(curso.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(curso.id, curso.nome);
+                                }}
                                 className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
                                 disabled={loading}
                               >

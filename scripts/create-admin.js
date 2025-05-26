@@ -1,44 +1,92 @@
 // Script para criar um documento admin no Firestore
 // Execute com: node scripts/create-admin.js
 
-const { initializeApp } = require("firebase/app");
-const { getFirestore, doc, setDoc } = require("firebase/firestore");
+const { initializeApp, cert } = require("firebase-admin/app");
+const { getFirestore } = require("firebase-admin/firestore");
 
-const firebaseConfig = {
-  apiKey: "AIzaSyATDE21wBLKPqLcAXKzIQti9vvYAT3gZPM",
-  authDomain: "barbearia-bd25e.firebaseapp.com",
-  projectId: "barbearia-bd25e",
-  storageBucket: "barbearia-bd25e.appspot.com",
-  messagingSenderId: "1079641275104",
-  appId: "1:1079641275104:web:e166f6912943c96bee6e85",
-  measurementId: "G-0MM4VLLQJR",
-};
+// Carregar credenciais do Firebase Admin
+try {
+  var serviceAccount = require("../service-account.json");
+} catch (error) {
+  console.error("❌ Arquivo service-account.json não encontrado!");
+  console.log("📝 Você precisa:");
+  console.log("1. Ir ao Console do Firebase");
+  console.log("2. Configurações do Projeto > Contas de serviço");
+  console.log("3. Gerar nova chave privada");
+  console.log(
+    '4. Salvar o arquivo como "service-account.json" na raiz do projeto'
+  );
+  process.exit(1);
+}
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+// Inicializar Firebase Admin SDK
+initializeApp({
+  credential: cert(serviceAccount),
+});
 
-async function createAdmin() {
-  const adminEmail = "dennisemannuel93@gmail.com"; // Email do usuário atual
-  const adminId = adminEmail.replace(/\./g, "_").replace("@", "_");
-  console.log("Tentando criar admin com ID:", adminId);
+const db = getFirestore();
+
+async function createAdmin(email) {
+  if (!email) {
+    console.error("❌ Email não fornecido!");
+    return;
+  }
+
+  const adminId = email.replace(/\./g, "_").replace("@", "_");
+  console.log("🔍 Verificando admin:", email);
+
   try {
-    await setDoc(doc(db, "admins", adminId), {
-      email: adminEmail,
-      role: "admin",
-      createdAt: new Date(),
-    });
+    const adminDoc = await db.collection("admins").doc(adminId).get();
 
-    console.log(`Admin criado com sucesso: ${adminEmail} (ID: ${adminId})`);
+    if (adminDoc.exists) {
+      console.log("⚠️ Admin já existe! Atualizando permissões...");
+    }
+
+    await db
+      .collection("admins")
+      .doc(adminId)
+      .set(
+        {
+          email: email,
+          role: "super_admin",
+          permissions: {
+            manage_admins: true,
+            manage_courses: true,
+            manage_blog: true,
+            manage_users: true,
+            manage_matriculas: true,
+          },
+          active: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          lastLogin: null,
+          twoFactorEnabled: false,
+        },
+        { merge: true }
+      );
+
+    console.log(`✅ Admin criado com sucesso: ${email} (ID: ${adminId})`);
   } catch (error) {
     console.error("Erro ao criar admin:", error);
   }
 }
 
-console.log("Iniciando script...");
-createAdmin()
+// Pegar email dos argumentos da linha de comando
+const adminEmail = process.argv[2];
+
+if (!adminEmail) {
+  console.error("❌ Por favor, forneça um email como argumento.");
+  console.log("📝 Exemplo: node scripts/create-admin.js seu.email@exemplo.com");
+  process.exit(1);
+}
+
+console.log("🚀 Iniciando criação de admin...");
+createAdmin(adminEmail)
   .then(() => {
-    console.log("Script finalizado");
+    console.log("✨ Script finalizado com sucesso!");
+    process.exit(0);
   })
   .catch((error) => {
-    console.error("Erro no script:", error);
+    console.error("❌ Erro no script:", error);
+    process.exit(1);
   });
