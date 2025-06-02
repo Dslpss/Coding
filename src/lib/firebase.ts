@@ -5,7 +5,7 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyATDE21wBLKPqLcAXKzIQti9vvYAT3gZPM",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: "barbearia-bd25e.firebaseapp.com",
   projectId: "barbearia-bd25e",
   storageBucket: "barbearia-bd25e.appspot.com",
