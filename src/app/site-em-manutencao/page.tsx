@@ -10,8 +10,10 @@ import {
 } from "react-icons/fa";
 import Link from "next/link";
 import useMaintenanceCheck from "@/lib/hooks/useMaintenanceCheck";
+import { useRouter } from "next/navigation";
 
 export default function MaintenancePage() {
+  const router = useRouter();
   // Usar o hook de verificação de manutenção com recursos visuais
   const {
     isLoading,
@@ -92,24 +94,27 @@ export default function MaintenancePage() {
       window.removeEventListener("resize", handleResize);
     };
   }, []);
-
-  // Componente de carregamento com animação
+  // Componente de carregamento com animação e efeito de pulso
   const LoadingSpinner = () => (
     <div className="flex justify-center items-center space-x-2">
-      <div
-        className="h-3 w-3 bg-blue-400 rounded-full animate-bounce"
-        style={{ animationDelay: "0ms" }}
-      ></div>
-      <div
-        className="h-3 w-3 bg-blue-400 rounded-full animate-bounce"
-        style={{ animationDelay: "150ms" }}
-      ></div>
-      <div
-        className="h-3 w-3 bg-blue-400 rounded-full animate-bounce"
-        style={{ animationDelay: "300ms" }}
-      ></div>
+      {[0, 150, 300].map((delay) => (
+        <div
+          key={delay}
+          className="h-3 w-3 bg-blue-400 rounded-full animate-bounce transition-all duration-300 hover:bg-blue-300"
+          style={{
+            animationDelay: `${delay}ms`,
+            boxShadow: `0 0 8px rgba(96, 165, 250, 0.6)`,
+          }}
+        />
+      ))}
     </div>
   );
+
+  useEffect(() => {
+    if (!isLoading && !inMaintenance) {
+      router.replace("/auth");
+    }
+  }, [isLoading, inMaintenance, router]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-blue-950 to-blue-900 p-4 text-white text-center relative overflow-hidden">
@@ -192,11 +197,12 @@ export default function MaintenancePage() {
               </p>
             </div>
           </div>
-        </div>
+        </div>{" "}
         {/* Status da verificação */}
         <div className="mb-6 px-4 py-2 bg-blue-800/40 rounded-lg text-blue-300 text-sm flex justify-between items-center">
-          <div>
-            Verificação: {checkCount > 0 ? `${checkCount}x` : "aguardando..."}
+          <div className="flex items-center gap-2">
+            {isLoading ? <LoadingSpinner /> : "Verificação: "}
+            {checkCount > 0 ? `${checkCount}x` : "aguardando..."}
           </div>
           <div className="w-24 bg-blue-900/50 rounded-full h-2 overflow-hidden">
             <div
