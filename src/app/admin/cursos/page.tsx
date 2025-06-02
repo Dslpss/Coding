@@ -169,7 +169,7 @@ export default function AdminCursosPage() {
     <div className="w-full">
       {" "}
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Gerenciar Cursos</h1>
+        <h1 className="text-2xl font-bold text-white">Gerenciar Cursos</h1>
       </div>
       {error && (
         <AlertBanner

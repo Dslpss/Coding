@@ -10,6 +10,7 @@ import {
   FaUser,
   FaGlobe,
   FaGraduationCap,
+  FaCode,
 } from "react-icons/fa";
 
 export default function NavigationMenu() {
@@ -80,7 +81,7 @@ export default function NavigationMenu() {
           <Link href="/progresso" className="text-white flex-1">
             Meu Progresso
           </Link>
-        </div>
+        </div>{" "}
         <div
           className={`flex items-center p-3 mb-2 ${
             isActive("/blog")
@@ -91,6 +92,21 @@ export default function NavigationMenu() {
           <FaNewspaper className="text-white mr-3" />
           <Link href="/blog" className="text-white flex-1">
             Blog
+          </Link>
+        </div>
+        <div
+          className={`flex items-center p-3 mb-2 ${
+            isActive("/dashboard/dicas-programacao")
+              ? "bg-blue-700 rounded-lg"
+              : "hover:bg-blue-700 rounded-lg"
+          }`}
+        >
+          <FaCode className="text-white mr-3" />
+          <Link
+            href="/dashboard/dicas-programacao"
+            className="text-white flex-1"
+          >
+            Dicas de Programação
           </Link>
         </div>
         <div

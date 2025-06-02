@@ -9,17 +9,28 @@ import MeusCursos from "./MeusCursos";
 import NavigationMenu from "./NavigationMenu";
 import UserStats from "./UserStats";
 import BlogPostsDashboard from "./BlogPostsDashboard";
+import useMaintenanceCheck from "@/lib/hooks/useMaintenanceCheck";
 
 export default function Dashboard() {
   const router = useRouter();
   const [user, loading] = useAuthState(auth);
+  
+  // Usar o hook de verificação de manutenção
+  const { isLoading: checkingMaintenance, maintenanceMode } = useMaintenanceCheck({
+    redirectToMaintenance: true,
+    pollingInterval: 30000 // Verificar a cada 30 segundos
+  });
 
-  if (loading)
+  if (loading || checkingMaintenance)
     return (
       <div className="flex justify-center items-center min-h-[60vh] text-white text-xl animate-pulse">
         Carregando...
       </div>
     );
+
+  if (maintenanceMode) {
+    return null; // Vai ser redirecionado pelo useEffect do hook
+  }
 
   if (!user)
     return (

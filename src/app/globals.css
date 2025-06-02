@@ -5,13 +5,6 @@
   --foreground: #171717;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
@@ -37,4 +30,183 @@ body {
   /* Removido o background para permitir o gradiente do layout */
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+.neon-text {
+  color: #fff;
+  text-shadow: 0 0 8px #7f9cf5, 0 0 16px #7f9cf5, 0 0 32px #a78bfa,
+    0 0 64px #c084fc;
+}
+.neon-glow {
+  z-index: -1;
+  border-radius: 8px;
+  box-shadow: 0 0 16px 4px #7f9cf5, 0 0 32px 8px #a78bfa, 0 0 64px 16px #c084fc;
+  opacity: 0.7;
+}
+@keyframes neon-glitch {
+  0%,
+  100% {
+    filter: none;
+    clip-path: inset(0 0 0 0);
+  }
+  10% {
+    filter: blur(1px) brightness(1.2);
+    clip-path: inset(0 0 10% 0);
+  }
+  20% {
+    filter: blur(2px) brightness(1.4);
+    clip-path: inset(0 0 0 10%);
+  }
+  30% {
+    filter: blur(1px) brightness(1.2);
+    clip-path: inset(10% 0 0 0);
+  }
+  40% {
+    filter: none;
+    clip-path: inset(0 10% 0 0);
+  }
+  50% {
+    filter: blur(2px) brightness(1.3);
+    clip-path: inset(0 0 0 0);
+  }
+  60% {
+    filter: none;
+    clip-path: inset(0 0 10% 0);
+  }
+  70% {
+    filter: blur(1px) brightness(1.2);
+    clip-path: inset(0 10% 0 0);
+  }
+  80% {
+    filter: none;
+    clip-path: inset(10% 0 0 0);
+  }
+  90% {
+    filter: blur(2px) brightness(1.4);
+    clip-path: inset(0 0 0 10%);
+  }
+}
+.animate-neon-glitch {
+  animation: neon-glitch 2.5s infinite alternate;
+}
+@keyframes footer-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 16px 4px #7f9cf5, 0 0 32px 8px #a78bfa,
+      0 0 64px 16px #c084fc;
+    filter: brightness(1.1);
+  }
+  50% {
+    box-shadow: 0 0 32px 12px #a78bfa, 0 0 64px 24px #c084fc,
+      0 0 128px 32px #fff;
+    filter: brightness(1.3) saturate(1.2);
+  }
+}
+.animate-footer-glow {
+  animation: footer-glow 2.5s infinite alternate;
+}
+@keyframes footer-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.04);
+  }
+}
+.animate-footer-pulse {
+  animation: footer-pulse 2.5s infinite;
+}
+@keyframes footer-zoomin {
+  0% {
+    opacity: 0;
+    transform: scale(0.7) translateY(-40px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.05) translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.animate-footer-zoomin {
+  animation: footer-zoomin 0.9s cubic-bezier(0.23, 1.05, 0.32, 1) both;
+}
+@keyframes footer-zoom-loop {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+.animate-footer-zoomloop {
+  animation: footer-zoom-loop 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* Animações para a página de manutenção */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-15px) rotate(2deg);
+  }
+}
+
+@keyframes float-delayed {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(-3deg);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: float-delayed 8s ease-in-out infinite 1s;
+}
+
+.shadow-glow {
+  box-shadow: 0 0 8px rgba(96, 165, 250, 0.6);
+}
+
+/* Efeito de partícula para a página de manutenção */
+.particle {
+  position: absolute;
+  background: rgba(96, 165, 250, 0.3);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Overlay de gradiente para botões */
+.btn-gradient-overlay:hover {
+  background-image: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+}
+
+/* Remover estas animações se o usuário preferir movimento reduzido */
+@media (prefers-reduced-motion) {
+  .animate-float,
+  .animate-float-delayed {
+    animation: none;
+  }
+
+  .particle {
+    display: none;
+  }
 }

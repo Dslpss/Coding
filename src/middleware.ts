@@ -2,10 +2,38 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/dashboard/:path*", "/dashboard", "/auth"],
 };
 
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  // Para rotas do dashboard e autenticação, verificar modo de manutenção
+  if (pathname.startsWith("/dashboard") || pathname === "/auth") {
+    try {
+      // Verificar se o sistema está em modo de manutenção
+      const response = await fetch(new URL("/api/auth/settings", request.url));
+      const data = await response.json();
+
+      if (data.maintenanceMode) {
+        console.log(
+          "Sistema em manutenção, redirecionando para página de manutenção"
+        );
+        return NextResponse.redirect(
+          new URL("/site-em-manutencao", request.url)
+        );
+      }
+
+      // Se não estiver em manutenção, continuar normalmente
+      return NextResponse.next();
+    } catch (error) {
+      console.error("Erro ao verificar modo de manutenção:", error);
+      // Em caso de erro, permitir acesso para não bloquear usuários
+      return NextResponse.next();
+    }
+  }
+
+  // Para rotas de admin, verificar autenticação
   const adminSession = request.cookies.get("admin_session");
 
   // Se não houver sessão, redirecionar para login

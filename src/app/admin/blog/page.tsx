@@ -152,7 +152,7 @@ export default function AdminBlog() {
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
-        <h1 className="text-2xl font-bold text-gray-800">Gerenciar Blog</h1>
+        <h1 className="text-2xl font-bold text-white">Gerenciar Blog</h1>
         <Link
           href="/admin/blog/novo"
           className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md flex items-center gap-2 justify-center sm:justify-start"
